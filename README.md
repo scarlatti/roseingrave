@@ -5,14 +5,14 @@ Massively scalable musical source comparator.
 ## Settings
 
 The `roseingrave.json` file defines alternative names for the input and output
-files for some of the commands. The default configuration is:
+files for the commands. The default configuration is:
 
 ```json
 {
   "definitionFiles": {
     "template": ["input", "template_definitions.json"],
-    "volunteers": ["input", "volunteer_definitions.json"],
-    "pieces": ["input", "piece_definitions.json"]
+    "pieces": ["input", "piece_definitions.json"],
+    "volunteers": ["input", "volunteer_definitions.json"]
   },
   "outputs": {
     "spreadsheetsIndex": ["output", "spreadsheets.json"],
@@ -37,7 +37,6 @@ spreadsheet. It has the following format with default values:
 
 ```json
 {
-  // the email of the person to give ownership of each created spreadsheet
   "owner": "REQUIRED",
   "title": "Title",
   "tempo": "Tempo",
@@ -57,6 +56,9 @@ spreadsheet. It has the following format with default values:
 }
 ```
 
+The `"owner"` field is required and should be the email of the person to give
+ownership of each created spreadsheet.
+
 Each field will create a row above the bars section, with the exception of the
 two following special fields:
 
@@ -74,24 +76,24 @@ font weight, etc.
 
 Create volunteer spreadsheets.
 
-Requires `"piece_definition"`, `"volunteer_definition"`, and
-`"template_definition"`. Outputs created spreadsheet links to `"spreadsheets"`.
+Requires `"template"`, `"pieces"`, and `"volunteers"`. Outputs created
+spreadsheet links to `"spreadsheetsIndex"`.
 
-If any volunteers already exist in `"spreadsheets"`, they will be skipped.
+If any volunteers already exist in `"spreadsheetsIndex"`, they will be skipped.
 
 #### Arguments
 
 - `emails` (optional, variadic): The volunteer(s) to create a spreadsheet for.
   If none given, creates spreadsheets for all volunteers found in
-  `"volunteer_definition"`.
+  `"volunteers"`.
 
 #### Options
 
 - `--replace`/`-r` (flag): Replace existing volunteer spreadsheets.
 - `--new`/`-n` (flag): Create new spreadsheets for all volunteers.
-- `-td`: A filename to replace `"template_definition"`.
-- `-pd`: A filename to replace `"piece_definition"`.
-- `-vd`: A filename to replace `"volunteer_definition"`.
+- `-td`: A filename to replace `"template"`.
+- `-pd`: A filename to replace `"pieces"`.
+- `-vd`: A filename to replace `"volunteers"`.
 
 <!-- TODO: following -->
 
