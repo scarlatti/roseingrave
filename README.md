@@ -7,7 +7,6 @@ Massively scalable musical source comparator.
 The `roseingrave.json` file defines alternative names for the input and output
 files for some of the commands. The default configuration is:
 
-<!-- prettier-ignore -->
 ```json
 {
   "definitionFiles": {
@@ -19,7 +18,7 @@ files for some of the commands. The default configuration is:
     "spreadsheetsIndex": ["output", "spreadsheets.json"],
     "pieceSummary": ["output", "summary.json"],
     "pieceDataPath": ["output", "data", "by-piece", "{piece}.json"],
-    "volunteer_output_folder": ["output", "data", "by-volunteer", "{email}.json"]
+    "volunteerDataPath": ["output", "data", "by-volunteer", "{email}.json"]
   }
 }
 ```
