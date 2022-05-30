@@ -6,15 +6,18 @@ Create a volunteer spreadsheet.
 # ======================================================================
 
 import click
+import gspread.exceptions
 from loguru import logger
 
-import gspread.exceptions
-
-from ._shared import (
-    fail_on_warning,
-    gspread_auth,
+from ._shared import fail_on_warning
+from ._read_write import (
     read_definitions,
     read_spreadsheets_index, write_spreadsheets_index,
+)
+from ._sheets import (
+    gspread_auth,
+    open_spreadsheet,
+    add_temp_sheet,
 )
 
 # ======================================================================
@@ -162,106 +165,6 @@ def create_spreadsheets(gc, spreadsheets, owner, emails):
 # ======================================================================
 
 
-def open_spreadsheet(gc, link):
-    """Open a spreadsheet.
-
-    Args:
-        gc (gspread.Client): The client.
-        link (str): The link of the spreadsheet to open.
-        strict (bool): Whether to fail on warnings instead of only
-            displaying them.
-
-    Returns:
-        bool, gspread.Spreadsheet: Whether the open was successful, and
-            the spreadsheet.
-    """
-
-    ERRORS = {
-        403: {
-            'PERMISSION_DENIED': (
-                f'Couldn\'t open spreadsheet "{link}" (permission '
-                'denied). Please make sure this spreadsheet is shared '
-                'with the service account with edit permissions, or '
-                'remove it from the spreadsheets index file.'
-            ),
-        },
-        404: {
-            'NOT_FOUND': (
-                f'Couldn\'t open spreadsheet "{link}" (not found). '
-                'Please remove it from the spreadsheets index file.'
-            ),
-        },
-    }
-
-    try:
-        return True, gc.open_by_url(link)
-    except gspread.exceptions.APIError as ex:
-        args = ex.args[0]
-
-        code = args['code']
-        status = args['status']
-
-        try:
-            logger.warning(ERRORS[code][status])
-            return False, None
-        except KeyError:
-            pass
-
-        # re-raise
-        raise
-
-
-def add_temp_sheet(spreadsheet, invalid=None):
-    """Add a temp sheet to a spreadsheet.
-
-    Args:
-        spreadsheet (gspread.Spreadsheet): The spreadsheet.
-        invalid (Set[str]): A set of invalid names.
-            Default is None.
-
-    Returns:
-        bool, gspread.Worksheet: Whether the addition was successful,
-            and the temp sheet.
-    """
-
-    ERRORS = {
-        403: {
-            'PERMISSION_DENIED': (
-                f'Couldn\'t edit spreadsheet "{spreadsheet.url}". '
-                'Please make sure this spreadsheet is shared with the '
-                'service account with edit permissions, or remove it '
-                'from the spreadsheets index file.'
-            ),
-        },
-    }
-
-    if invalid is None:
-        invalid = set()
-
-    title = '_temp'
-    count = 0
-    while title in invalid:
-        count += 1
-        title = f'_temp{count}'
-
-    try:
-        return True, spreadsheet.add_worksheet(title, 1, 1)
-    except gspread.exceptions.APIError as ex:
-        args = ex.args[0]
-
-        code = args['code']
-        status = args['status']
-
-        try:
-            logger.warning(ERRORS[code][status])
-            return False, None
-        except KeyError:
-            pass
-
-        # re-raise
-        raise
-
-
 def populate_spreadsheets(gc, spreadsheets, volunteers, pieces, strict):
     """Populate the spreadsheets with the volunteer pieces.
 
@@ -342,15 +245,15 @@ def populate_spreadsheets(gc, spreadsheets, volunteers, pieces, strict):
 )
 @click.option(
     '-td', type=str,
-    help='A filepath to replace the template definition file.'
+    help='A filepath to replace the template definitions file.'
 )
 @click.option(
     '-pd', type=str,
-    help='A filepath to replace the piece definition file.'
+    help='A filepath to replace the piece definitions file.'
 )
 @click.option(
     '-vd', type=str,
-    help='A filepath to replace the volunteer definition file.'
+    help='A filepath to replace the volunteer definitions file.'
 )
 @click.option(
     '-si', type=str,
@@ -372,9 +275,9 @@ def create_sheet(emails, replace, new, td, pd, vd, si, strict):
         new (bool): Whether to create new spreadsheets for all
             volunteers.
             Default is False.
-        td (str): A filepath to replace the template definition file.
-        pd (str): A filepath to replace the piece definition file.
-        vd (str): A filepath to replace the volunteer definition file.
+        td (str): A filepath to replace the template definitions file.
+        pd (str): A filepath to replace the piece definitions file.
+        vd (str): A filepath to replace the volunteer definitions file.
         si (str): A filepath to replace the spreadsheets index file.
         strict (bool): Whether to fail on warnings instead of only
             displaying them.
@@ -390,7 +293,9 @@ def create_sheet(emails, replace, new, td, pd, vd, si, strict):
     if not success:
         return
 
-    spreadsheets = read_spreadsheets_index(si)
+    success, spreadsheets = read_spreadsheets_index(si)
+    if not success:
+        return
 
     if len(emails) > 0:
         # filter volunteers in `emails`
@@ -398,8 +303,8 @@ def create_sheet(emails, replace, new, td, pd, vd, si, strict):
         for email in emails:
             if email not in volunteers:
                 logger.warning(
-                    f'Volunteer "{email}" not found in spreadsheets '
-                    'index file'
+                    f'Volunteer "{email}" not found in volunteers '
+                    'definitions file'
                 )
                 continue
             filtered[email] = volunteers[email]
@@ -442,6 +347,8 @@ def create_sheet(emails, replace, new, td, pd, vd, si, strict):
         return
 
     if len(create_for) > 0:
-        write_spreadsheets_index(spreadsheets, si)
+        success = write_spreadsheets_index(spreadsheets, si)
+        if not success:
+            return
 
     logger.info('Done')
