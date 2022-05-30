@@ -2,6 +2,18 @@
 
 Massively scalable musical source comparator.
 
+## Dependencies
+
+These scripts interact with Google Sheets through the
+[`gspread` package](https://docs.gspread.org/en/latest/).
+Currently, the script only supports using a Google service account with which
+Spreadsheets may be created, accessed, and edited. See
+[here](https://docs.gspread.org/en/latest/oauth2.html#for-bots-using-service-account)
+for steps on how to create and use this service account.
+
+The credentials are expected to be in the file defined by `"credentials"` in the
+[settings](#settings).
+
 ## Settings
 
 The `roseingrave.json` file defines alternative names for the input and output
@@ -9,6 +21,7 @@ files for the commands. The default configuration is:
 
 ```json
 {
+  "credentials": "service_account.json",
   "definitionFiles": {
     "template": ["input", "template_definitions.json"],
     "pieces": ["input", "piece_definitions.json"],
@@ -26,51 +39,153 @@ files for the commands. The default configuration is:
 Each value can either be a string for the filename, or an array defining the
 path to the file.
 
+For `"pieceDataPath"` and `"volunteerDataPath"`, you may use `"{piece}"` and
+`"{email}"` respectively in the path to format the name of the piece and the
+email of the volunteer respectively.
+
 In the following, file names/paths will be referenced by its corresponding key.
 
 ## Input files
 
 ### `"template"`
 
-The `"template"` file defines the names of rows or columns in each created
-spreadsheet. It has the following format with default values:
+The `"template"` file defines the names of rows or columns and other values to
+use for created spreadsheets. It has the following format with default values:
 
 ```json
 {
   "owner": "REQUIRED",
-  "title": "Title",
-  "tempo": "Tempo",
-  "key": "Key",
-  "keySig": "Key sig.",
-  "timeSig": "Time sig.",
-  "barCount": "Bars",
-  "compass": "Compass",
-  "comments": "Comments",
-  "notes": "Notes",
-  "clefs": "Clefs (if other than G and F)",
-  "endOrRepeat": "Endings and Repeat signs",
-  "articulation": "Articulation signs",
-  "dynamic": "Dynamic signs",
-  "hand": "Hand signs",
-  "otherIndications": "Other indications"
+  "metaDataFields": {
+    "title": "Title",
+    "tempo": "Tempo",
+    "key": "Key",
+    "keySig": "Key sig.",
+    "timeSig": "Time sig.",
+    "barCount": "Bars",
+    "compass": "Compass",
+    "comments": "Comments",
+    "notes": "Notes",
+    "clefs": "Clefs (if other than G and F)",
+    "endOrRepeat": "Endings and Repeat signs",
+    "articulation": "Articulation signs",
+    "dynamic": "Dynamic signs",
+    "hand": "Hand signs",
+    "otherIndications": "Other indications"
+  },
+  "values": {
+    "defaultBarCount": 100
+  }
 }
 ```
 
 The `"owner"` field is required and should be the email of the person to give
-ownership of each created spreadsheet.
+ownership of each created spreadsheet. (Note: As of April 2022, transferring
+ownership requires consent. Thus, this email will be made an "editor" until
+there is a workaround for this issue.)
 
-Each field will create a row above the bars section, with the exception of the
-two following special fields:
+Each field under `"metaDataFields"` defines the header name of each row above
+the bars section, with the exception of the two following special fields:
 
 - `"columns"`: The right-most column, where comments can be left on any of the
   rows or bars.
 - `"notes"`: A single row below the bars section, where source-specific notes
   may be left.
 
+Each field under `"values"` has the following meaning:
+
+- `"defaultBarCount"`: If no bar counts are given in `"pieces"`, use this value.
+
 In the future, there will be additional fields for customizing font, font size,
 font weight, etc.
 
+### `"pieces"`
+
+The `"pieces"` file defines each piece and the sources for each piece. Each
+piece can have an optional link. Each source requires a name and a link and also
+has an optional bar count. The resulting bar section for this piece will be the
+max of all the bar counts given, or a default if no bar counts are given.
+
+The file should have the following format:
+
+```json
+[
+  {
+    "title": "pieceName1",
+    "sources": [
+      {
+        "name": "sourceName1",
+        "link": "sourceLink1",
+        "barCount": 100
+      }
+    ]
+  },
+  {
+    "title": "pieceName2",
+    "link": "pieceLink2",
+    "sources": [
+      {
+        "name": "sourceName2",
+        "link": "sourceLink2"
+      }
+    ]
+  }
+]
+```
+
+Pieces with repeated names will be treated as a single piece with the
+combination of all their sources. All sources will be saved, regardless of
+repeated names or links.
+
+### `"volunteers"`
+
+The `"volunteers"` file defines each volunteer and the pieces for each
+volunteer.
+
+The file should have the following format:
+
+<!-- prettier-ignore -->
+```json
+[
+  {
+    "email": "volunteerEmail",
+    "pieces": [
+      "pieceName1",
+      "pieceName2"
+    ]
+  }
+]
+```
+
+Volunteers with repeated emails will be treated as a single volunteer with the
+combination of all their pieces. Repeated pieces will be ignored after the first
+occurrence. Unknown pieces will be ignored. Spreadsheets will be created with
+the order of the pieces preserved.
+
+## Output files
+
+### `"spreadsheetsIndex"`
+
+The `"spreadsheetsIndex"` file defines a mapping from volunteer emails to their
+corresponding spreadsheet link. It will also have a key of `"MASTER"` for the
+master spreadsheet.
+
+### `"pieceSummary"`
+
+TODO
+
+### `"pieceDataPath"`
+
+TODO
+
+### `"volunteerDataPath"`
+
+TODO
+
 ## Commands
+
+Run with `python -m roseingrave <command> [options]`.
+
+More commands to come.
 
 ### `create_sheet`
 
@@ -83,19 +198,23 @@ If any volunteers already exist in `"spreadsheetsIndex"`, they will be skipped.
 
 #### Arguments
 
-- `emails` (optional, variadic): The volunteer(s) to create a spreadsheet for.
+- `emails` (optional, variadic): The volunteers to create spreadsheets for.
   If none given, creates spreadsheets for all volunteers found in
   `"volunteers"`.
 
 #### Options
 
-- `--replace`/`-r` (flag): Replace existing volunteer spreadsheets.
-- `--new`/`-n` (flag): Create new spreadsheets for all volunteers.
-- `-td`: A filename to replace `"template"`.
-- `-pd`: A filename to replace `"pieces"`.
-- `-vd`: A filename to replace `"volunteers"`.
+- `-r`/`--replace` (flag): Replace existing volunteer spreadsheets.
+  This will not create a new spreadsheet, but will wipe all current content in
+  the existing spreadsheet.
+- `-n`/`--new` (flag): Create new spreadsheets for all volunteers.
+- `-td`: A filepath to replace `"template"`.
+- `-pd`: A filepath to replace `"pieces"`.
+- `-vd`: A filepath to replace `"volunteers"`.
+- `-si`: A filepath to replace `"spreadsheetsIndex"`.
+- `--strict` (flag): Fail on warnings instead of only displaying them.
 
-<!-- TODO: following -->
+<!-- TODO: below -->
 
 <!--
 ### `volunteer_summary [EMAIL]`
