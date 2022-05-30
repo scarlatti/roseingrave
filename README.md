@@ -73,7 +73,8 @@ use for created spreadsheets. It has the following format with default values:
     "otherIndications": "Other indications"
   },
   "values": {
-    "defaultBarCount": 100
+    "defaultBarCount": 100,
+    "notesRowHeight": 75
   }
 }
 ```
@@ -94,6 +95,9 @@ the bars section, with the exception of the two following special fields:
 Each field under `"values"` has the following meaning:
 
 - `"defaultBarCount"`: If no bar counts are given in `"pieces"`, use this value.
+  Must be positive.
+- `"notesRowHeight"`: The number of pixels to make the height of the notes row.
+  Must be at least 21 (the default height of a row).
 
 In the future, there will be additional fields for customizing font, font size,
 font weight, etc.

@@ -75,6 +75,7 @@ FILES = {
             },
             'values': {
                 'defaultBarCount': 100,
+                'notesRowHeight': 75,
             },
         },
     },
@@ -318,6 +319,9 @@ def read_template(path=None):
     # default bar count must be positive
     if values['values']['defaultBarCount'] <= 0:
         return error(f'{key}: "defaultBarCount" must be positive')
+    # notes row height must be at least 21
+    if values['values']['notesRowHeight'] < 21:
+        return error(f'{key}: "notesRowHeight" must be at least 21')
 
     return True, values
 

@@ -119,8 +119,6 @@ class Piece:
             [source.hyperlink() for source in self._sources] +
             [template['metaDataFields']['comments']]
         )
-        # empty row
-        before_bars.append([])
         # all other rows from template
         from_template = tuple(
             key for key in template['metaDataFields'].keys()
@@ -200,6 +198,19 @@ class Piece:
         blank_row2 = blank_row1 + bar_count + 1
         notes_row = blank_row2 + 1
 
+        # make everything middle aligned
+        requests.append({
+            'repeatCell': {
+                'range': {'sheetId': sheet.id},
+                'cell': {
+                    'userEnteredFormat': {
+                        'verticalAlignment': 'MIDDLE',
+                    },
+                },
+                'fields': 'userEnteredFormat.verticalAlignment',
+            }
+        })
+
         # formatting
         bolded = {
             'cell': {
@@ -209,13 +220,17 @@ class Piece:
             },
             'fields': 'userEnteredFormat.textFormat.bold',
         }
-        wrapped = {
+        wrapped_top_align = {
             'cell': {
                 'userEnteredFormat': {
                     'wrapStrategy': 'WRAP',
+                    'verticalAlignment': 'TOP',
                 },
             },
-            'fields': 'userEnteredFormat.wrapStrategy',
+            'fields': ','.join((
+                'userEnteredFormat.wrapStrategy',
+                'userEnteredFormat.verticalAlignment',
+            ))
         }
         range_formats = (
             # template row headers
@@ -225,7 +240,7 @@ class Piece:
             # notes header
             (f'A{notes_row}', bolded),
             # notes row
-            (f'B{notes_row}:{notes_row}', wrapped),
+            (f'B{notes_row}:{notes_row}', wrapped_top_align),
         )
 
         for range_name, fmt in range_formats:
@@ -264,10 +279,10 @@ class Piece:
         )
 
         # double border after the first row
-        double_border = {
-            'style': 'DOUBLE',
-            'color': {'red': 0, 'green': 0, 'blue': 0},
-        }
+        # double_border = {
+        #     'style': 'DOUBLE',
+        #     'color': {'red': 0, 'green': 0, 'blue': 0},
+        # }
         # range_borders += (('1:1', {'bottom': double_border}),)
 
         for range_name, borders in range_borders:
@@ -279,17 +294,17 @@ class Piece:
             })
 
         # double border on the right of every column
-        for column in range(1, 1 + len(self._sources)):
-            requests.append({
-                'updateBorders': {
-                    'range': {
-                        'sheetId': sheet.id,
-                        'startColumnIndex': column,
-                        'endColumnIndex': column + 1,
-                    },
-                    'right': double_border,
-                }
-            })
+        # for column in range(1, 1 + len(self._sources)):
+        #     requests.append({
+        #         'updateBorders': {
+        #             'range': {
+        #                 'sheetId': sheet.id,
+        #                 'startColumnIndex': column,
+        #                 'endColumnIndex': column + 1,
+        #             },
+        #             'right': double_border,
+        #         }
+        #     })
 
         # make column 1 width 200
         requests.append({
@@ -321,6 +336,23 @@ class Piece:
             }
         })
 
+        # make notes row proper height
+        requests.append({
+            'updateDimensionProperties': {
+                'properties': {
+                    'pixelSize':
+                        self._template['values']['notesRowHeight'],
+                },
+                'fields': 'pixelSize',
+                'range': {
+                    'sheet_id': sheet.id,
+                    'dimension': 'ROWS',
+                    'startIndex': notes_row - 1,  # 0-indexed here
+                    'endIndex': notes_row,
+                },
+            }
+        })
+
         # freeze row 1 and column 1
         requests.append({
             'updateSheetProperties': {
@@ -345,10 +377,10 @@ class Piece:
         footer_color = 'dedede'
 
         def hex_to_rgb(hex_color):
+            colors = ('red', 'green', 'blue')
             return {
-                'red': int(hex_color[0:2], 16) / 255,
-                'green': int(hex_color[2:4], 16) / 255,
-                'blue': int(hex_color[4:6], 16) / 255,
+                key: int(hex_color[i:i+2], 16) / 255
+                for key, i in zip(colors, range(0, 6, 2))
             }
 
         requests.append({
