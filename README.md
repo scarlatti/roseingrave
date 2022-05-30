@@ -29,9 +29,9 @@ files for the commands. The default configuration is:
   },
   "outputs": {
     "spreadsheetsIndex": ["output", "spreadsheets.json"],
-    "pieceSummary": ["output", "summary.json"],
+    "volunteerDataPath": ["output", "data", "by-volunteer", "{email}.json"],
     "pieceDataPath": ["output", "data", "by-piece", "{piece}.json"],
-    "volunteerDataPath": ["output", "data", "by-volunteer", "{email}.json"]
+    "pieceSummary": ["output", "summary.json"]
   }
 }
 ```
@@ -39,9 +39,9 @@ files for the commands. The default configuration is:
 Each value can either be a string for the filename, or an array defining the
 path to the file.
 
-For `"pieceDataPath"` and `"volunteerDataPath"`, you may use `"{piece}"` and
-`"{email}"` respectively in the path to format the name of the piece and the
-email of the volunteer respectively.
+For `"volunteerDataPath"` and `"pieceDataPath"`, you must use `"{email}"` and
+`"{piece}"` respectively in the path to format the email of the volunteer and
+the name of the piece respectively. Not doing so will result in an error.
 
 In the following, file names/paths will be referenced by its corresponding key.
 
@@ -63,14 +63,16 @@ use for created spreadsheets. It has the following format with default values:
     "timeSig": "Time sig.",
     "barCount": "Bars",
     "compass": "Compass",
-    "comments": "Comments",
-    "notes": "Notes",
     "clefs": "Clefs (if other than G and F)",
     "endOrRepeat": "Endings and Repeat signs",
     "articulation": "Articulation signs",
     "dynamic": "Dynamic signs",
     "hand": "Hand signs",
     "otherIndications": "Other indications"
+  },
+  "commentFields": {
+    "comments": "Comments",
+    "notes": "Notes"
   },
   "values": {
     "defaultBarCount": 100,
@@ -85,7 +87,9 @@ ownership requires consent. Thus, this email will be made an "editor" until
 there is a workaround for this issue.)
 
 Each field under `"metaDataFields"` defines the header name of each row above
-the bars section, with the exception of the two following special fields:
+the bars section.
+
+Each field under `"commentFields"` has the following meaning:
 
 - `"columns"`: The right-most column, where comments can be left on any of the
   rows or bars.
@@ -173,15 +177,17 @@ The `"spreadsheetsIndex"` file defines a mapping from volunteer emails to their
 corresponding spreadsheet link. It will also have a key of `"MASTER"` for the
 master spreadsheet.
 
-### `"pieceSummary"`
+### `"volunteerDataPath"`
 
-TODO
+The `"volunteerDataPath"` template defines a format for the path of files when
+exporting volunteer data. It will contain an array of objects representing
+pieces.
 
 ### `"pieceDataPath"`
 
 TODO
 
-### `"volunteerDataPath"`
+### `"pieceSummary"`
 
 TODO
 
@@ -218,20 +224,31 @@ If any volunteers already exist in `"spreadsheetsIndex"`, they will be skipped.
 - `-si`: A filepath to replace `"spreadsheetsIndex"`.
 - `--strict` (flag): Fail on warnings instead of only displaying them.
 
+### `volunteer_summary`
+
+Export volunteer JSON data files.
+
+Requires `"spreadsheetsIndex"` and `"template"`. Outputs created data files to
+`"volunteerDataPath"`, replacing existing files.
+
+If the spreadsheets don't match `"template"`, there is undefined behavior. For
+proper exported data, ensure that the spreadsheets have the correct format.
+
+#### Arguments
+
+- `emails` (optional, variadic): The volunteers to export data for. If none
+  given, exports data for all volunteers found in `"spreadsheetsIndex"`.
+
+#### Options
+
+- `-si`: A filepath to replace `"spreadsheetsIndex"`.
+- `-td`: A filepath to replace `"template"`.
+- `-vdp`: A filepath to replace `"volunteerDataPath"`. Must include `"{email}"`.
+- `--strict` (flag): Fail on warnings instead of only displaying them.
+
 <!-- TODO: below -->
 
 <!--
-### `volunteer_summary [EMAIL]`
-
-- creates a volunteer JSON data file for a given volunteer email
-  - if no email provided, creates JSONs for all volunteers
-- requires `spreadsheets.json` to find the spreadsheet link
-  - error if not found
-  - maybe use a flag to override the name, like `-s spreadsheets.json`
-- outputs `data/by-volunteers/<email>.json`
-  - use `data/by-volunteers` as a default output folder and use `-o other_folder` as a way to override
-  - see Pathlib to make paths: https://stackoverflow.com/a/50110841/408734
-
 ### `piece_summary [PIECE]`
 
 - creates a piece JSON file for a given piece

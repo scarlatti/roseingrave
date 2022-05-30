@@ -5,7 +5,12 @@ The Piece and Source classes.
 
 # ======================================================================
 
-from gspread.utils import a1_range_to_grid_range as gridrange
+import re
+
+from gspread.utils import (
+    a1_range_to_grid_range as gridrange,
+    rowcol_to_a1,
+)
 
 # ======================================================================
 
@@ -13,21 +18,46 @@ __all__ = ('Piece',)
 
 # ======================================================================
 
+HYPERLINK_RE = re.compile(r'=HYPERLINK\("(.+)", "(.+)"\)')
+
+# ======================================================================
+
 
 def _hyperlink(text, link=None):
-    """Create a hyperlink formula with optional link."""
+    """Create a hyperlink formula with optional link.
+
+    Args:
+        text (str): The placeholder text.
+        link (str): The link.
+
+    Returns:
+        str: The hyperlink formula.
+    """
+
     if link is None:
         return text
+    escaped = text.replace('"', '\\"')
+    return f'=HYPERLINK("{link}", "{escaped}")'
 
-    def escape_quotes(s):
-        result = []
-        for c in s:
-            if c == '"':
-                result.append('\\')
-            result.append(c)
-        return ''.join(result)
 
-    return f'=HYPERLINK("{link}", "{escape_quotes(text)}")'
+def _parse_hyperlink(hyperlink):
+    """Extract the link and text from a hyperlink formula.
+
+    Args:
+        hyperlink (str): The hyperlink formula.
+
+    Returns:
+        Union[Tuple[str, str], Tuple[None, None]]:
+            The link and the text, or None and None if the hyperlink
+            is invalid.
+    """
+
+    match = HYPERLINK_RE.match(hyperlink)
+    if match is None:
+        return None, None
+    link, text = match.groups()
+    return link, text.replace('\\"', '"')
+
 
 # ======================================================================
 
@@ -81,7 +111,7 @@ class Piece:
 
         Args:
             kwargs (Dict): The JSON dict.
-            template (Dict[str, str]): The template settings.
+            template (Dict): The template settings.
 
         Raises:
             ValueError: If any required key is not found.
@@ -117,16 +147,13 @@ class Piece:
             # fill in with name in `create_sheet()`
             [''] +
             [source.hyperlink() for source in self._sources] +
-            [template['metaDataFields']['comments']]
+            [template['commentFields']['comments']]
         )
         # all other rows from template
-        from_template = tuple(
-            key for key in template['metaDataFields'].keys()
-            # don't make a row for "comments" and "notes"
-            if key not in ('comments', 'notes')
-        )
-        for key in from_template:
-            before_bars.append([template['metaDataFields'][key]])
+        before_bars += [
+            [header]
+            for header in template['metaDataFields'].values()
+        ]
         # empty row
         before_bars.append([])
 
@@ -136,7 +163,7 @@ class Piece:
             # empty row
             [],
             # notes row
-            [template['metaDataFields']['notes']]
+            [template['commentFields']['notes']]
         ]
 
         # before bar section, after bar section
@@ -403,3 +430,76 @@ class Piece:
         spreadsheet.batch_update({'requests': requests})
 
         return sheet
+
+    @staticmethod
+    def export_sheet(sheet, template):
+        """Export piece data from a sheet.
+        Assumes same format as a created sheet from
+        `Piece.create_sheet()`.
+
+        Args:
+            sheet (gspread.Worksheet): The sheet.
+            template (Dict): The template settings.
+
+        Returns:
+            Tuple[bool, Dict]: Whether the export was successful,
+                and the data in JSON format.
+        """
+
+        values = sheet.get_values(value_render_option='formula')
+
+        # row 1
+        row1 = values[0]
+
+        piece_link, piece_name = _parse_hyperlink(row1[0])
+        if piece_name is None:
+            piece_name = row1[0]
+
+        headers = tuple(template['metaDataFields'].keys())
+
+        headers_range = (1, 1 + len(headers))
+        bars_range = (1 + len(headers) + 1, len(values) - 2)
+        notes_row = len(values) - 1
+
+        sources = []
+        for col in range(1, len(row1) - 1):
+            link, name = _parse_hyperlink(values[0][col])
+            if link is None:
+                col_letter = rowcol_to_a1(1, col+1)[:-1]
+                msg = (
+                    f'column {col_letter} doesn\'t have a valid '
+                    'hyperlink'
+                )
+                return False, msg
+
+            source = {
+                'name': name,
+                'link': link,
+            }
+
+            for row, header in zip(range(*headers_range), headers):
+                source[header] = values[row][col]
+
+            bars_values = {}
+            for row in range(*bars_range):
+                bars_values[values[row][0]] = values[row][col]
+            source['bars'] = bars_values
+
+            source['notes'] = values[notes_row][col]
+
+            sources.append(source)
+
+        comments = {}
+        for row, header in zip(range(*headers_range), headers):
+            comments[header] = values[row][-1]
+        bars_comments = {}
+        for row in range(*bars_range):
+            bars_comments[values[row][0]] = values[row][-1]
+        comments['bars'] = bars_comments
+
+        return True, {
+            'piece': piece_name,
+            'pieceLink': piece_link,
+            'sources': sources,
+            'comments': comments,
+        }

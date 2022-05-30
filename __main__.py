@@ -8,6 +8,7 @@ The command-line interface for Roseingrave.
 import click
 
 from ._create_sheet import create_sheet
+from ._volunteer_summary import volunteer_summary
 
 # ======================================================================
 
@@ -30,7 +31,7 @@ class OrderedGroup(click.Group):
 cli = OrderedGroup(
     commands=[
         create_sheet,
-        # volunteer_summary,
+        volunteer_summary,
         # piece_summary,
         # compile_pieces,
         # import_master,
