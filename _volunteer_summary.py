@@ -8,7 +8,7 @@ Export volunteer JSON data files.
 import click
 from loguru import logger
 
-from ._shared import fail_on_warning
+from ._shared import fail_on_warning, error
 from ._read_write import (
     read_template,
     read_spreadsheets_index,
@@ -62,9 +62,7 @@ def export_spreadsheet(gc, email, link, template, strict):
             success = False
             msg = str(ex)
         if not success:
-            logger.error(
-                f'Error when exporting "{sheet.title}" sheet: {msg}'
-            )
+            error(f'Error when exporting "{sheet.title}" sheet: {msg}')
             if strict:
                 return ERROR_RETURN
 
@@ -106,15 +104,15 @@ def volunteer_summary(emails, si, td, vdp, strict):
         si (str): A filepath to replace the spreadsheets index file.
         td (str): A filepath to replace the template definitions file.
         vdp (str): A filepath to replace the volunteer data path file.
-            Must include "{email}".
+            Must include "{email}" exactly once.
         strict (bool): Whether to fail on warnings instead of only
             displaying them.
             Default is False.
     """
 
     # validate args
-    if vdp is not None and '{email}' not in vdp:
-        logger.error('`vdp` must include "{email}"')
+    if vdp is not None and vdp.count('{email}') != 1:
+        error('`vdp` must include "{email}" exactly once')
         return
 
     success, gc = gspread_auth()

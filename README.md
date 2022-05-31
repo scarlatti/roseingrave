@@ -74,8 +74,8 @@ Each value can either be a string for the filename, or an array defining the
 path to the file.
 
 For `"volunteerDataPath"` and `"pieceDataPath"`, you must use `"{email}"` and
-`"{piece}"` respectively in the path to format the email of the volunteer and
-the name of the piece respectively. Not doing so will result in an error.
+`"{piece}"` respectively in the path exactly once to format the email of the
+volunteer and the name of the piece respectively.
 
 In the following, file names/paths will be referenced by its corresponding key.
 
@@ -213,11 +213,13 @@ pieces.
 
 ### `"pieceDataPath"`
 
-TODO
+The `"pieceDataPath"` template defines a format for the path of files when
+exporting piece data. It will contain compiled information about the piece,
+including each volunteer-source pair that have matched this piece.
 
-### `"pieceSummary"`
+<!-- ### `"pieceSummary"`
 
-TODO
+TODO -->
 
 ## Commands
 
@@ -277,22 +279,37 @@ proper exported data, ensure that the spreadsheets have the correct format.
 
 - `-si`: A filepath to replace `"spreadsheetsIndex"`.
 - `-td`: A filepath to replace `"template"`.
-- `-vdp`: A filepath to replace `"volunteerDataPath"`. Must include `"{email}"`.
+- `-vdp`: A filepath to replace `"volunteerDataPath"`. Must include `"{email}"`
+  exactly once.
 - `--strict` (flag): Fail on warnings instead of only displaying them.
+
+### `piece_summary`
+
+Export piece JSON data files.
+
+For most accurate summary, run the `volunteer_summary` command first.
+
+Reads the existing files in `"volunteerDataPath"`. Outputs created data files to
+`"pieceDataPath"`, replacing existing files.
+
+All data will be copied exactly from the volunteer data files to the piece data
+files.
+
+#### Arguments
+
+- `pieces` (optional, variadic): The pieces to export data for. If none given,
+  exports data for all pieces found when reading the existing files.
+
+#### Options
+
+- `-vdp`: A filepath to replace `"volunteerDataPath"`. Must include `"{email}"`
+  exactly once.
+- `-pdp`: A filepath to replace `"pieceDataPath"`. Must include `"{piece}"`
+  exactly once.
 
 <!-- TODO: below -->
 
 <!--
-### `piece_summary [PIECE]`
-
-- creates a piece JSON file for a given piece
-  - if no piece provided, creates JSONs for all pieces found​
-- reads the existing files in the `data/by-pieces/` subdirectory and compiles info from them
-  - for accurate summary, run `volunteer_summary` first
-  - how to specify if the path name has been changed?
-  - does adding options to rename the paths make things too complicated? it's just inelegant to hard-code everything IMHO? thoughts?
-- outputs `data/by-pieces/<piece>.json`
-  - same remark as for `volunteer_summary` re: output folder flag
 
 ### `compile_pieces`
 

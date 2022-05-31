@@ -10,6 +10,7 @@ import click
 from ._reauth import reauth
 from ._create_sheet import create_sheet
 from ._volunteer_summary import volunteer_summary
+from ._piece_summary import piece_summary
 
 # ======================================================================
 
@@ -34,7 +35,7 @@ cli = OrderedGroup(
         reauth,
         create_sheet,
         volunteer_summary,
-        # piece_summary,
+        piece_summary,
         # compile_pieces,
         # import_master,
         # export_master,

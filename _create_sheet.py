@@ -9,7 +9,7 @@ import click
 import gspread.exceptions
 from loguru import logger
 
-from ._shared import fail_on_warning
+from ._shared import fail_on_warning, error
 from ._read_write import (
     read_definitions,
     read_spreadsheets_index, write_spreadsheets_index,
@@ -92,10 +92,10 @@ def share(spreadsheet,
 
         code = args['code']
         if code in ERRORS:
-            for error in args['errors']:
-                reason = error['reason']
+            for err in args['errors']:
+                reason = err['reason']
                 if reason in ERRORS[code]:
-                    logger.error(ERRORS[code][reason])
+                    error(ERRORS[code][reason])
                     return False
 
         # re-raise

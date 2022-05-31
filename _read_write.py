@@ -6,6 +6,7 @@ Read and write operations on files.
 # ======================================================================
 
 import json
+import re
 from pathlib import Path
 
 from loguru import logger
@@ -20,7 +21,8 @@ __all__ = (
     'read_template',
     'read_definitions',
     'read_spreadsheets_index', 'write_spreadsheets_index',
-    'write_volunteer_data',
+    'read_volunteer_data', 'write_volunteer_data',
+    'write_piece_data',
 )
 
 # ======================================================================
@@ -97,6 +99,7 @@ def _get_path(key, path=None, must_exist=True, create_dirs=False):
 
     Raises:
         ValueError: If `path` is None and the key is invalid.
+        ValueError: If the file does not have extension ".json".
         FileNotFoundError: If `must_exist` is True
             and the file is not found.
 
@@ -110,6 +113,8 @@ def _get_path(key, path=None, must_exist=True, create_dirs=False):
         path = SETTINGS[key]
     else:
         path = [path]
+    if not path[-1].endswith('.json'):
+        raise ValueError('path must have extension ".json"')
 
     filepath = Path(*path)
     if must_exist and not filepath.exists():
@@ -473,9 +478,81 @@ def write_spreadsheets_index(data, path=None):
 # ======================================================================
 
 
+def read_volunteer_data(fmt_path=None):
+    """Read volunteer data from files.
+
+    Args:
+        fmt_path (Optional[str]): A format path for volunteer data to
+            use instead.
+            Default is None (use the settings file).
+
+    Returns:
+        Tuple[bool, Dict[str, Dict]]: Whether the read was successful,
+            and a mapping from volunteer emails to data.
+    """
+    ERROR_RETURN = False, None
+
+    def _error(msg):
+        return error(msg, ERROR_RETURN)
+
+    success = _read_settings()
+    if not success:
+        return False
+
+    # validate args
+    try:
+        path = _get_path(
+            'volunteerDataPath', fmt_path,
+            must_exist=False
+        )
+    except Exception as ex:
+        return _error(ex)
+    if str(path).count('{email}') != 1:
+        return _error(
+            'Path to volunteer data files must include "{email}" '
+            'exactly once'
+        )
+
+    logger.info(f'Reading volunteer data from files: {path}')
+
+    path = path.resolve()
+
+    # email -> file content
+    files = {}
+    for filepath in Path('.').glob('**/*'):
+        if not filepath.is_file():
+            continue
+        filepath = filepath.resolve()
+        if len(filepath.parts) != len(path.parts):
+            continue
+        found_email = None
+        invalid = False
+        for path_part, part in zip(path.parts, filepath.parts):
+            if '{email}' in path_part:
+                match = re.match(
+                    path_part.replace('{email}', '(.+)'), part
+                )
+                if match is None:
+                    invalid = True
+                    break
+                found_email = match.groups()[0]
+            elif path_part != part:
+                invalid = True
+                break
+        if invalid or found_email is None:
+            continue
+        files[found_email] = _read_json('', str(filepath))
+
+    if len(files) == 0:
+        logger.info('No matching files found')
+        return ERROR_RETURN
+
+    return True, files
+
+
 def write_volunteer_data(data, fmt_path=None):
     """Write volunteer data to files.
-    Replaces files if they alraedy exist.
+    Replaces files if they already exist.
 
     Args:
         data (Dict[str, Dict]): A mapping from volunteer emails to data.
@@ -487,20 +564,75 @@ def write_volunteer_data(data, fmt_path=None):
         bool: Whether the write was successful.
     """
 
-    # validate args
-    path = str(_get_path(
-        'volunteerDataPath', fmt_path,
-        must_exist=False
-    ))
-    if '{email}' not in path:
-        logger.error(
-            'Path to volunteer data files must include "{email}"'
-        )
+    def _error(msg):
+        return error(msg, False)
+
+    success = _read_settings()
+    if not success:
         return False
+
+    # validate args
+    try:
+        path = str(_get_path(
+            'volunteerDataPath', fmt_path,
+            must_exist=False
+        ))
+    except Exception as ex:
+        return _error(ex)
+    if path.count('{email}') != 1:
+        return _error(
+            'Path to volunteer data files must include "{email}" '
+            'exactly once'
+        )
 
     logger.info(f'Writing volunteer data to files: {path}')
 
     for email, volunteer_data in data.items():
         _write_json_file(path.format(email=email), volunteer_data)
+
+    return True
+
+# ======================================================================
+
+
+def write_piece_data(data, fmt_path=None):
+    """Write piece data to files.
+    Replaces files if they already exist.
+
+    Args:
+        data (Dict[str, Dict]): A mapping from piece names to data.
+        fmt_path (Optional[str]): A format path for piece data to use
+            instead.
+            Default is None (use the settings file).
+
+    Returns:
+        bool: Whether the write was successful.
+    """
+
+    def _error(msg):
+        return error(msg, False)
+
+    success = _read_settings()
+    if not success:
+        return False
+
+    # validate args
+    try:
+        path = str(_get_path(
+            'pieceDataPath',
+            fmt_path, must_exist=False
+        ))
+    except Exception as ex:
+        return _error(ex)
+    if path.count('{piece}') != 1:
+        return _error(
+            'Path to piece data files must include "{piece}" exactly '
+            'once'
+        )
+
+    logger.info(f'Writing piece data to files: {path}')
+
+    for piece, piece_data in data.items():
+        _write_json_file(path.format(piece=piece), piece_data)
 
     return True
