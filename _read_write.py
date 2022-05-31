@@ -44,13 +44,13 @@ FILES = {
         },
         'outputs': {
             'spreadsheetsIndex': ['output', 'spreadsheets.json'],
-            'pieceSummary': ['output', 'summary.json'],
             'volunteerDataPath': [
                 'output', 'data', 'by-volunteer', '{email}.json'
             ],
             'pieceDataPath': [
                 'output', 'data', 'by-piece', '{piece}.json'
             ],
+            'piecesSummary': ['output', 'summary.json'],
         },
     },
     'template': {
@@ -487,7 +487,7 @@ def read_volunteer_data(fmt_path=None):
             Default is None (use the settings file).
 
     Returns:
-        Tuple[bool, Dict[str, Dict]]: Whether the read was successful,
+        Tuple[bool, Dict[str, List]]: Whether the read was successful,
             and a mapping from volunteer emails to data.
     """
     ERROR_RETURN = False, None
@@ -555,7 +555,7 @@ def write_volunteer_data(data, fmt_path=None):
     Replaces files if they already exist.
 
     Args:
-        data (Dict[str, Dict]): A mapping from volunteer emails to data.
+        data (Dict[str, List]): A mapping from volunteer emails to data.
         fmt_path (Optional[str]): A format path for volunteer data to
             use instead.
             Default is None (use the settings file).

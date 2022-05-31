@@ -21,68 +21,31 @@ __all__ = ('piece_summary',)
 # ======================================================================
 
 
-@click.command(
-    'piece_summary',
-    help='Export piece JSON data files.',
-)
-@click.argument('pieces', type=str, nargs=-1)
-@click.option(
-    '-vdp', type=str,
-    help=(
-        'A filepath to replace the volunteer data path file. '
-        'Must include "{email}".'
-    )
-)
-@click.option(
-    '-pdp', type=str,
-    help=(
-        'A filepath to replace the piece data path file. '
-        'Must include "{piece}".'
-    )
-)
-def piece_summary(pieces, vdp, pdp):
-    """Export piece JSON data files.
+def extract_pieces(pieces, volunteers_data):
+    """Extract pieces from volunteer data files.
 
     Args:
-        pieces (Tuple[str, ...]): The pieces to export data for. If none
-            given, exports data for all pieces found.
-        vdp (str): A filepath to replace the volunteer data path file.
-            Must include "{email}" exactly once.
-        pdp (str): A filepath to replace the piece data path file.
-            Must include "{piece}" exactly once.
+        pieces (Tuple[str]): The pieces to extract.
+            If empty, all pieces will be extracted.
+        volunteers_data (Dict[str, Json]): A mapping from volunteer
+            emails to data.
     """
+    pieces = set(pieces)
 
-    # validate args
-    if vdp is not None and vdp.count('{email}') != 1:
-        error('`vdp` must include "{email}" exactly once')
-        return
-    if pdp is not None and pdp.count('{piece}') != 1:
-        error('`pdp` must include "{piece}" exactly once')
-        return
-
-    logger.warning(
-        'For most accurate summary, run the `volunteer_summary` '
-        'command first.'
-    )
-
-    success, data = read_volunteer_data(vdp)
-    if not success:
-        return
-
-    pieces_names = set(pieces)
     # piece name -> data
-    pieces_data = {}
+    data = {}
     # piece name -> source name -> index
     piece_sources = {}
-    for email, volunteer_data in data.items():
+
+    for email, volunteer_data in volunteers_data.items():
         for piece in volunteer_data:
             # skip piece
             title = piece['piece']
-            if len(pieces) > 0 and title not in pieces_names:
+            if len(pieces) > 0 and title not in pieces:
                 continue
 
-            if title not in pieces_data:
-                pieces_data[title] = {
+            if title not in data:
+                data[title] = {
                     'title': title,
                     'link': piece['pieceLink'],
                     'sources': [],
@@ -93,13 +56,13 @@ def piece_summary(pieces, vdp, pdp):
                 }
                 if 'bars' in piece['comments']:
                     # copy over all the bars
-                    pieces_data[title]['comments']['bars'] = {
+                    data[title]['comments']['bars'] = {
                         key: {}
                         for key in piece['comments']['bars'].keys()
                     }
                 piece_sources[title] = {}
 
-            piece_data = pieces_data[title]
+            piece_data = data[title]
             source_names = piece_sources[title]
 
             # save first link found
@@ -149,15 +112,70 @@ def piece_summary(pieces, vdp, pdp):
                     comments[key] = {}
                 comments[key][email] = comment
 
-    if len(pieces_data) == 0:
+    return data
+
+# ======================================================================
+
+
+@click.command(
+    'piece_summary',
+    help='Export piece JSON data files.',
+)
+@click.argument('pieces', type=str, nargs=-1)
+@click.option(
+    '-vdp', type=str,
+    help=(
+        'A filepath to replace the volunteer data path file. '
+        'Must include "{email}".'
+    )
+)
+@click.option(
+    '-pdp', type=str,
+    help=(
+        'A filepath to replace the piece data path file. '
+        'Must include "{piece}".'
+    )
+)
+def piece_summary(pieces, vdp, pdp):
+    """Export piece JSON data files.
+
+    Args:
+        pieces (Tuple[str, ...]): The pieces to export data for. If none
+            given, exports data for all pieces found.
+        vdp (str): A filepath to replace the volunteer data path file.
+            Must include "{email}" exactly once.
+        pdp (str): A filepath to replace the piece data path file.
+            Must include "{piece}" exactly once.
+    """
+
+    # validate args
+    if vdp is not None and vdp.count('{email}') != 1:
+        error('`vdp` must include "{email}" exactly once')
+        return
+    if pdp is not None and pdp.count('{piece}') != 1:
+        error('`pdp` must include "{piece}" exactly once')
+        return
+
+    logger.warning(
+        'For most accurate summary, run the `volunteer_summary` '
+        'command first.'
+    )
+
+    success, volunteers_data = read_volunteer_data(vdp)
+    if not success:
+        return
+
+    data = extract_pieces(pieces, volunteers_data)
+
+    if len(data) == 0:
         logger.info('No data found for pieces')
         return
 
     for piece in pieces:
-        if piece not in pieces_data:
+        if piece not in data:
             logger.warning(f'No data found for piece "{piece}"')
 
-    success = write_piece_data(pieces_data, pdp)
+    success = write_piece_data(data, pdp)
     if not success:
         return
 
