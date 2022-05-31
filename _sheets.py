@@ -25,8 +25,12 @@ __all__ = (
 # ======================================================================
 
 
-def gspread_auth():
+def gspread_auth(force=False):
     """Authenticate gspread to connect with Google Sheets.
+
+    Args:
+        force (bool): Whether to force the authentication.
+            Default is False.
 
     Returns:
         Tuple[bool, gspread.Client]: Whether the setup was successful,
@@ -47,15 +51,23 @@ def gspread_auth():
     except FileNotFoundError as ex:
         return _error(ex)
 
-    # service account
-    client = gspread.service_account(str(filepath))
+    auth_user_path = _get_path('authorized_user', must_exist=False)
+    # use `.resolve()` to turn this into the full path to avoid this:
+    # https://github.com/burnash/gspread/issues/1056
+    auth_user_path = auth_user_path.resolve()
 
-    # oauth
-    # auth_user_path = Path(*SETTINGS['authorized_user'])
-    # client = gspread.oauth(
-    #     credentials_filename=str(filepath),
-    #     authorized_user_filename=str(auth_user_path)
-    # )
+    if force and auth_user_path.exists():
+        auth_user_path.unlink()
+
+    try:
+        client = gspread.oauth(
+            credentials_filename=str(filepath),
+            authorized_user_filename=str(auth_user_path),
+            flow=gspread.auth.console_flow
+        )
+    except Exception as ex:
+        # incorrect authorization code
+        return _error(ex)
 
     return True, client
 

@@ -6,13 +6,47 @@ Massively scalable musical source comparator.
 
 These scripts interact with Google Sheets through the
 [`gspread` package](https://docs.gspread.org/en/latest/).
-Currently, the script only supports using a Google service account with which
-Spreadsheets may be created, accessed, and edited. See
-[here](https://docs.gspread.org/en/latest/oauth2.html#for-bots-using-service-account)
-for steps on how to create and use this service account.
+You can enable an OAuth Client to create, access, and edit spreadsheets with
+your email.
 
-The credentials are expected to be in the file defined by `"credentials"` in the
-[settings](#settings).
+To enable the OAuth Client, follow these steps:
+
+1. Go to the [Google Developers Console](https://console.cloud.google.com/).
+2. Create a new project.
+3. Go to the [API Library](https://console.cloud.google.com/apis/library).
+4. In the search bar, search for "Google Drive API", select it, and enable it.
+5. Go back to the API library. In the search bar, search for "Google Sheets
+   API", select it, and enable it.
+6. Go to the
+   [OAuth Consent Screen](https://console.cloud.google.com/apis/credentials/consent)
+   tab.
+7. If prompted, select "External" for the User Type.
+8. On the "App Information" page, enter an app name. Select your email address
+   for the support email. Scroll down to the bottom and enter your email address
+   for the developer contact information. Click "Save and Continue".
+9. On the "Scopes" page, click "Save and Continue".
+10. On the "Test Users" page, add your email address as a user. Click "Save and
+    Continue".
+11. On the summary page, scroll to the bottom and click "Back to Dashboard".
+12. Go to the [Credentials](https://console.cloud.google.com/apis/credentials)
+    tab.
+13. At the top of the page, select "+ Create credentials" > "OAuth client ID".
+14. For the application type, select "Desktop app". Name your credentials.
+    Click "Create". Click "Ok" at the popup.
+15. In the table labeled "OAuth 2.0 Client IDs", locate the credentials you just
+    created. Click the download button at the end of the row.
+16. Rename the file to `"credentials.json"` and place it in the root directory
+    of where you'll be running the script. (You can customize this in the
+    [settings](#settings)).
+
+If you've never authorized the app or if your authorization has expired, you'll
+be given a link in the console for you to visit in order to refresh or create
+an authorization token. Go to the url, select your email, click "Continue",
+allow access to your Drive files and Sheets spreadsheets, click "Continue", copy
+the authorization code on the final page, and paste it back into the console.
+
+Once the authorization is successful, the `"authorized_user.json"` file will be
+created in the same directory as `"credentials"`.
 
 ## Settings
 
@@ -21,7 +55,7 @@ files for the commands. The default configuration is:
 
 ```json
 {
-  "credentials": "service_account.json",
+  "credentials": "credentials.json",
   "definitionFiles": {
     "template": ["input", "template_definitions.json"],
     "pieces": ["input", "piece_definitions.json"],
@@ -50,11 +84,10 @@ In the following, file names/paths will be referenced by its corresponding key.
 ### `"template"`
 
 The `"template"` file defines the names of rows or columns and other values to
-use for created spreadsheets. It has the following format with default values:
+use for created spreadsheets. The default values are:
 
 ```json
 {
-  "owner": "REQUIRED",
   "metaDataFields": {
     "title": "Title",
     "tempo": "Tempo",
@@ -80,11 +113,6 @@ use for created spreadsheets. It has the following format with default values:
   }
 }
 ```
-
-The `"owner"` field is required and should be the email of the person to give
-ownership of each created spreadsheet. (Note: As of April 2022, transferring
-ownership requires consent. Thus, this email will be made an "editor" until
-there is a workaround for this issue.)
 
 Each field under `"metaDataFields"` defines the header name of each row above
 the bars section.
@@ -196,6 +224,12 @@ TODO
 Run with `python -m roseingrave <command> [options]`.
 
 More commands to come.
+
+### `reauth`
+
+Reauthenticate the credentials for your OAuth Client.
+
+No options.
 
 ### `create_sheet`
 

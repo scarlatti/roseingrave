@@ -34,7 +34,7 @@ SETTINGS = {}
 FILES = {
     'settings': {
         # the default settings
-        'credentials': 'service_account.json',
+        'credentials': 'credentials.json',
         'definitionFiles': {
             'template': ['input', 'template_definitions.json'],
             'pieces': ['input', 'piece_definitions.json'],
@@ -52,33 +52,29 @@ FILES = {
         },
     },
     'template': {
-        'required': (
-            'owner',
-        ),
-        'defaults': {
-            'metaDataFields': {
-                'title': 'Title',
-                'tempo': 'Tempo',
-                'key': 'Key',
-                'keySig': 'Key sig.',
-                'timeSig': 'Time sig.',
-                'barCount': 'Bars',
-                'compass': 'Compass',
-                'clefs': 'Clefs (if other than G and F)',
-                'endOrRepeat': 'Endings and Repeat signs',
-                'articulation': 'Articulation signs',
-                'dynamic': 'Dynamic signs',
-                'hand': 'Hand signs',
-                'otherIndications': 'Other indications',
-            },
-            'commentFields': {
-                'comments': 'Comments',
-                'notes': 'Notes',
-            },
-            'values': {
-                'defaultBarCount': 100,
-                'notesRowHeight': 75,
-            },
+        # the default template
+        'metaDataFields': {
+            'title': 'Title',
+            'tempo': 'Tempo',
+            'key': 'Key',
+            'keySig': 'Key sig.',
+            'timeSig': 'Time sig.',
+            'barCount': 'Bars',
+            'compass': 'Compass',
+            'clefs': 'Clefs (if other than G and F)',
+            'endOrRepeat': 'Endings and Repeat signs',
+            'articulation': 'Articulation signs',
+            'dynamic': 'Dynamic signs',
+            'hand': 'Hand signs',
+            'otherIndications': 'Other indications',
+        },
+        'commentFields': {
+            'comments': 'Comments',
+            'notes': 'Notes',
+        },
+        'values': {
+            'defaultBarCount': 100,
+            'notesRowHeight': 75,
         },
     },
 }
@@ -198,6 +194,10 @@ def _read_settings():
     Returns:
         bool: Whether the read was successful.
     """
+    ERROR_RETURN = False
+
+    def _error(msg):
+        return error(msg, ERROR_RETURN)
 
     if len(SETTINGS) > 0:
         return True
@@ -237,10 +237,7 @@ def _read_settings():
             search in path_piece
             for path_piece in SETTINGS[key]
         ):
-            return error(
-                f'settings: "{key}" must have "{search}"',
-                False
-            )
+            return _error(f'settings: "{key}" must have "{search}"')
 
     return True
 
@@ -278,15 +275,10 @@ def read_template(path=None):
         return _error(ex)
     values = {}
 
-    # check required
-    for k in FILES[key]['required']:
-        if k not in raw_values:
-            return _error(f'{key}: key "{k}" not found')
-        values[k] = raw_values[k]
+    # no required fields
 
     # add defaults if missing
-    defaults = FILES[key]['defaults']
-    for level, level_defaults in defaults.items():
+    for level, level_defaults in FILES[key].items():
         level_values = raw_values.get(level, {})
         values[level] = {}
         for k, default in level_defaults.items():
