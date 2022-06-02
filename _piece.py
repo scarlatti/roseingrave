@@ -11,6 +11,7 @@ from gspread.utils import (
     a1_range_to_grid_range as gridrange,
     rowcol_to_a1,
 )
+from loguru import logger
 
 # ======================================================================
 
@@ -61,6 +62,18 @@ def _parse_hyperlink(hyperlink):
 
 # ======================================================================
 
+def _max(a, b):
+    """Find the max of two possibly-None values."""
+    if a is None and b is None:
+        return None
+    if a is None:
+        return b
+    if b is None:
+        return a
+    return max(a, b)
+
+# ======================================================================
+
 
 class Source:
     """Source class."""
@@ -73,6 +86,7 @@ class Source:
 
         Raises:
             ValueError: If any required key is not found.
+            ValueError: If the bar count is not positive.
         """
 
         for key in ('name', 'link'):
@@ -84,7 +98,7 @@ class Source:
         self._bar_count = kwargs.get('barCount', None)
         # only allow positive bar counts
         if self._bar_count is not None and self._bar_count <= 0:
-            self._bar_count = None
+            raise ValueError('bar count must be positive')
 
     @property
     def name(self):
@@ -97,6 +111,10 @@ class Source:
     @property
     def bar_count(self):
         return self._bar_count
+
+    def combine(self, other):
+        """Combine this source with another by taking max bar count."""
+        self._bar_count = _max(self._bar_count, other.bar_count)
 
     def hyperlink(self):
         """Return a string formula for the linked source."""
@@ -115,6 +133,7 @@ class Piece:
 
         Raises:
             ValueError: If any required key is not found.
+            ValueError: If any source's bar count is not positive.
         """
 
         for key in ('title', 'sources'):
@@ -124,31 +143,22 @@ class Piece:
         self._name = kwargs['title']
         self._link = kwargs.get('link', None)
 
-        self._sources = []
+        self._sources = {}
         self._bar_count = None
         for i, args in enumerate(kwargs['sources']):
             try:
                 source = Source(args)
             except ValueError as ex:
                 # re-raise the exception with added text
-                ex.args = (f'source{i}: ' + ex.args[0],) + ex.args[1]
+                ex.args = (f'source {i}: ' + ex.args[0],) + ex.args[1]
                 raise
-            self._sources.append(source)
-            bars = source.bar_count
-            if bars is not None:
-                if self._bar_count is None or bars > self._bar_count:
-                    self._bar_count = bars
+            self._add_source(source)
 
         self._template = template
 
+        # row 1 in `create_sheet()`
+
         before_bars = []
-        # row 1: piece name, source names, and comments column
-        before_bars.append(
-            # fill in with name in `create_sheet()`
-            [''] +
-            [source.hyperlink() for source in self._sources] +
-            [template['commentFields']['comments']]
-        )
         # all other rows from template
         before_bars += [
             [header]
@@ -179,18 +189,42 @@ class Piece:
 
     @property
     def sources(self):
-        return self._sources
+        return list(self._sources.values())
+
+    @property
+    def final_bar_count(self):
+        if self._bar_count is None:
+            return self._template['values']['defaultBarCount']
+        return self._bar_count
+
+    def _add_source(self, source):
+        """Add a source."""
+
+        name = source.name
+        if name in self._sources:
+            logger.debug(
+                f'Combining source "{name}" in piece "{self._name}"'
+            )
+            self._sources[name].combine(source)
+        else:
+            self._sources[name] = source
+
+        self._bar_count = _max(self._bar_count, source.bar_count)
 
     def combine(self, other):
         """Combine this piece with another by combining all sources."""
-        if self._link is None and other.link is not None:
+        if self._link is None:
             self._link = other.link
         for source in other.sources:
-            self._sources.append(source)
-            bars = source.bar_count
-            if bars is not None:
-                if self._bar_count is None or bars > self._bar_count:
-                    self._bar_count = bars
+            self._add_source(source)
+
+    def has_source(self, name):
+        """Check if this piece has a source with the given name."""
+        return name in self._sources
+
+    def get_source(self, name):
+        """Get the source by the given name, or None."""
+        return self._sources.get(name, None)
 
     def create_sheet(self, spreadsheet):
         """Create a sheet for this piece.
@@ -205,8 +239,12 @@ class Piece:
         # add sheet
         sheet = spreadsheet.add_worksheet(self._name, 1, 1)
 
-        # update name with optional link
-        self._values[0][0][0] = _hyperlink(self._name, self._link)
+        # complete row 1
+        row1 = [
+            [_hyperlink(self._name, self._link)] +
+            [source.hyperlink() for source in self._sources.values()] +
+            [self._template['commentFields']['comments']]
+        ]
 
         # update values with proper bar count
         bar_count = self._bar_count
@@ -214,7 +252,7 @@ class Piece:
             bar_count = self._template['values']['defaultBarCount']
         bars_section = [[i + 1] for i in range(bar_count)]
 
-        values = self._values[0] + bars_section + self._values[1]
+        values = row1 + self._values[0] + bars_section + self._values[1]
 
         # put the values
         sheet.update(values, raw=False)

@@ -168,9 +168,10 @@ The file should have the following format:
 ]
 ```
 
-Pieces with repeated names will be treated as a single piece with the
-combination of all their sources. All sources will be saved, regardless of
-repeated names or links.
+Pieces with repeated names will be treated as a single piece with the first link
+found and the combination of all their sources. Sources with repeated names will
+have the max bar count of the given bar counts. Sheets will be created with the
+order of the sources preserved.
 
 ### `"volunteers"`
 
@@ -289,11 +290,13 @@ Export piece JSON data files.
 
 For most accurate summary, run the `volunteer_summary` command first.
 
-Reads the existing files in `"volunteerDataPath"`. Outputs created data files to
-`"pieceDataPath"`, replacing existing files.
+Requires `"volunteerDataPath"`, `"template"`, and `"pieces"`. Reads the existing
+files in `"volunteerDataPath"`. Outputs created data files to `"pieceDataPath"`,
+replacing existing files.
 
-All data will be copied exactly from the volunteer data files to the piece data
-files.
+To create the output files, `"template"` and `"pieces"` will be used to
+determine the proper keys and bar counts for each source. Unknown pieces and
+sources will be skipped. Unknown or missing fields will raise warnings.
 
 #### Arguments
 
@@ -304,8 +307,11 @@ files.
 
 - `-vdp`: A filepath to replace `"volunteerDataPath"`. Must include `"{email}"`
   exactly once.
+- `-td`: A filepath to replace `"template"`.
+- `-pd`: A filepath to replace `"pieces"`.
 - `-pdp`: A filepath to replace `"pieceDataPath"`. Must include `"{piece}"`
   exactly once.
+- `--strict` (flag): Fail on warnings instead of only displaying them.
 
 <!-- TODO: below -->
 

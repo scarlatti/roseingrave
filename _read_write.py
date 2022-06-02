@@ -7,6 +7,7 @@ Read and write operations on files.
 
 import json
 import re
+from itertools import zip_longest
 from pathlib import Path
 
 from loguru import logger
@@ -19,6 +20,7 @@ from ._volunteer import Volunteer
 
 __all__ = (
     'read_template',
+    'read_piece_definitions',
     'read_definitions',
     'read_spreadsheets_index', 'write_spreadsheets_index',
     'read_volunteer_data', 'write_volunteer_data',
@@ -301,55 +303,28 @@ def read_template(path=None):
 # ======================================================================
 
 
-def read_definitions(template_path=None,
-                     pieces_path=None,
-                     volunteers_path=None,
-                     strict=False,
-                     ):
-    """Read the template file and the definitions files.
-    Repeated pieces and volunteers will be combined.
-    Unknown pieces for volunteers will be ignored.
+def read_piece_definitions(template, path=None):
+    """Read the piece definitions file.
+    Repeated pieces will be combined.
 
     Args:
-        template_path (Optional[str]): A path to the template
-            definitions file to use instead.
+        template (Dict): The template settings.
+        path (Optional[str]): A path to the piece definitions file to
+            use instead.
             Default is None (use the settings file).
-        pieces_path (Optional[str]): A path to the piece definitions
-            file to use instead.
-            Default is None (use the settings file).
-        volunteers_path (Optional[str]): A path to the volunteer
-            definitions file to use instead.
-            Default is None (use the settings file).
-        strict (bool): Whether to fail on warnings instead of only
-            displaying them.
-            Default is False.
 
     Returns:
-        Tuple[bool, Dict, Dict[str, Piece], Dict[str, Volunteer]]:
-            Whether the read was successful,
-            the template settings,
-            a mapping from piece names to piece objects, and
-            a mapping from volunteer emails to volunteer objects.
+        Tuple[bool, Dict[str, Piece]]: Whether the read was successful,
+            and a mapping from piece names to piece objects.
     """
-    # FIXME: also write to file with fixed things
-    #   e.g.: combine pieces, combine volunteers, remove duplicates
-
-    ERROR_RETURN = False, None, None, None
+    ERROR_RETURN = False, None
 
     def _error(msg):
         return error(msg, ERROR_RETURN)
 
-    success = _read_settings()
-    if not success:
-        return ERROR_RETURN
-
-    success, template = read_template(template_path)
-    if not success:
-        return ERROR_RETURN
-
     logger.info('Reading piece definitions file')
     try:
-        raw_pieces = _read_json('pieces', pieces_path)
+        raw_pieces = _read_json('pieces', path)
     except FileNotFoundError as ex:
         return _error(ex)
     if len(raw_pieces) == 0:
@@ -379,9 +354,33 @@ def read_definitions(template_path=None,
     if invalid:
         return ERROR_RETURN
 
+    return True, pieces
+
+
+def _read_volunteer_definitions(pieces, path=None, strict=False):
+    """Read the volunteer definitions file.
+    Repeated volunteers will be combined.
+    Unknown pieces will be ignored.
+
+    Args:
+        template (Dict): The template settings.
+        path (Optional[str]): A path to the piece definitions file to
+            use instead.
+            Default is None (use the settings file).
+
+    Returns:
+        Tuple[bool, Dict[str, Volunteer]]:
+            Whether the read was successful,
+            and a mapping from volunteer emails to volunteer objects.
+    """
+    ERROR_RETURN = False, None
+
+    def _error(msg):
+        return error(msg, ERROR_RETURN)
+
     logger.info('Reading volunteer definitions file')
     try:
-        raw_volunteers = _read_json('volunteers', volunteers_path)
+        raw_volunteers = _read_json('volunteers', path)
     except FileNotFoundError as ex:
         return _error(ex)
     if len(raw_volunteers) == 0:
@@ -417,6 +416,59 @@ def read_definitions(template_path=None,
             invalid = True
             _error(f'volunteer "{volunteer.email}": no pieces found')
     if invalid:
+        return ERROR_RETURN
+
+    return True, volunteers
+
+
+def read_definitions(template_path=None,
+                     pieces_path=None,
+                     volunteers_path=None,
+                     strict=False,
+                     ):
+    """Read the template file and the definitions files.
+    Repeated pieces and volunteers will be combined.
+    Unknown pieces for volunteers will be ignored.
+
+    Args:
+        template_path (Optional[str]): A path to the template
+            definitions file to use instead.
+            Default is None (use the settings file).
+        pieces_path (Optional[str]): A path to the piece definitions
+            file to use instead.
+            Default is None (use the settings file).
+        volunteers_path (Optional[str]): A path to the volunteer
+            definitions file to use instead.
+            Default is None (use the settings file).
+        strict (bool): Whether to fail on warnings instead of only
+            displaying them.
+            Default is False.
+
+    Returns:
+        Tuple[bool, Dict, Dict[str, Piece], Dict[str, Volunteer]]:
+            Whether the read was successful,
+            the template settings,
+            a mapping from piece names to piece objects, and
+            a mapping from volunteer emails to volunteer objects.
+    """
+    ERROR_RETURN = False, None, None, None
+
+    success = _read_settings()
+    if not success:
+        return ERROR_RETURN
+
+    success, template = read_template(template_path)
+    if not success:
+        return ERROR_RETURN
+
+    success, pieces = read_piece_definitions(template, pieces_path)
+    if not success:
+        return ERROR_RETURN
+
+    success, volunteers = _read_volunteer_definitions(
+        pieces, volunteers_path, strict
+    )
+    if not success:
         return ERROR_RETURN
 
     return True, template, pieces, volunteers
@@ -478,6 +530,107 @@ def write_spreadsheets_index(data, path=None):
 # ======================================================================
 
 
+def _read_format_files(fmt_path, arg):
+    """Read all files matching a formatted path.
+
+    Args:
+        fmt_path (Path): The format path.
+        arg (str): The arg in the path to match.
+
+    Raises:
+        ValueError: If `fmt_path` doesn't include `arg` exactly once.
+
+    Returns:
+        Tuple[bool, Dict[str, Union[Dict, List]]]:
+            Whether there were any files found, and a mapping from each
+            file's arg to the file's parsed contents.
+    """
+    fmt_path = fmt_path.resolve()
+
+    if str(fmt_path).count(arg) != 1:
+        raise ValueError(
+            f'path "{fmt_path}" must include "{arg}" exactly once'
+        )
+
+    path_parts = fmt_path.parts
+    cwd_parts = Path('.').resolve().parts
+
+    # find where they start to differ and where the arg occurs
+    differ = None
+    arg_index = None
+    path_re = None
+    for i, (path_part, part) in \
+            enumerate(zip_longest(path_parts, cwd_parts)):
+        if path_part is not None and arg in path_part:
+            arg_index = i
+            path_re = re.compile(path_part.replace(arg, '(.+)'))
+            if differ is None:
+                differ = i
+            break
+
+        if differ is None:
+            if path_part is None or part is None or path_part != part:
+                differ = i
+
+        if differ is not None and arg_index is not None:
+            break
+
+    # arg from filepath -> file contents
+    data = {}
+
+    num_parts = len(path_parts)
+
+    def check_path(index, curr_path):
+        """Check if the current path matches the format path so far,
+        and populates data as it goes.
+        """
+
+        last_part = index >= num_parts - 1
+
+        if (
+            # invalid index
+            index >= num_parts or
+            # can only be a file when last part
+            curr_path.is_file() != last_part
+        ):
+            return
+
+        current = curr_path.name
+        found_arg = None
+
+        if index == arg_index:
+            # check match
+            match = path_re.match(current)
+            if match is None:
+                return
+            found_arg = match.groups()[0]
+        elif current != path_parts[index]:
+            return
+
+        # last part
+        if last_part:
+            if found_arg is not None:
+                # add to data
+                data[found_arg] = _read_json('', str(curr_path))
+            return
+
+        # recursively check next
+        for path in curr_path.iterdir():
+            check_path(index + 1, path)
+
+    # search all files
+    for path in Path(*path_parts[:differ]).iterdir():
+        check_path(differ, path)
+
+    if len(data) == 0:
+        logger.info('No matching files found')
+        return False, None
+
+    return True, data
+
+# ======================================================================
+
+
 def read_volunteer_data(fmt_path=None):
     """Read volunteer data from files.
 
@@ -515,39 +668,11 @@ def read_volunteer_data(fmt_path=None):
 
     logger.info(f'Reading volunteer data from files: {path}')
 
-    path = path.resolve()
-
-    # email -> file content
-    files = {}
-    for filepath in Path('.').glob('**/*'):
-        if not filepath.is_file():
-            continue
-        filepath = filepath.resolve()
-        if len(filepath.parts) != len(path.parts):
-            continue
-        found_email = None
-        invalid = False
-        for path_part, part in zip(path.parts, filepath.parts):
-            if '{email}' in path_part:
-                match = re.match(
-                    path_part.replace('{email}', '(.+)'), part
-                )
-                if match is None:
-                    invalid = True
-                    break
-                found_email = match.groups()[0]
-            elif path_part != part:
-                invalid = True
-                break
-        if invalid or found_email is None:
-            continue
-        files[found_email] = _read_json('', str(filepath))
-
-    if len(files) == 0:
-        logger.info('No matching files found')
+    success, volunteers = _read_format_files(path, '{email}')
+    if not success:
         return ERROR_RETURN
 
-    return True, files
+    return True, volunteers
 
 
 def write_volunteer_data(data, fmt_path=None):
