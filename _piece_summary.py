@@ -125,9 +125,23 @@ def _extract_sources(email,
     """
     ERROR_RETURN = False
 
+    def _error(msg, *args, **kwargs):
+        return error(msg.format(*args, **kwargs), ERROR_RETURN)
+
     piece_location = f'volunteer "{email}", piece "{piece.name}"'
 
-    for raw_source in raw_sources:
+    for i, raw_source in enumerate(raw_sources):
+        missing_keys = [
+            key for key in ('name', 'link')
+            if key not in raw_source
+        ]
+        if len(missing_keys) > 0:
+            return _error(
+                'Missing fields {} for {}, source {}',
+                ','.join(f'"{key}"' for key in missing_keys),
+                piece_location, i
+            )
+
         name = raw_source['name']
 
         if not piece.has_source(name):
@@ -178,7 +192,7 @@ def _extract_pieces(to_extract,
         pieces (Dict[str, Piece]): A mapping from piece names to piece
             objects.
         template (Dict): The template settings.
-        volunteers_data (Dict[str, Json]): A mapping from volunteer
+        volunteers_data (Dict[str, List]): A mapping from volunteer
             emails to data.
         strict (bool): Whether to fail on warnings instead of only
             displaying them.
@@ -189,6 +203,9 @@ def _extract_pieces(to_extract,
             a mapping from piece names to data.
     """
     ERROR_RETURN = False, None
+
+    def _error(msg, *args, **kwargs):
+        return error(msg.format(*args, **kwargs), ERROR_RETURN)
 
     to_extract = set(to_extract)
 
@@ -232,7 +249,19 @@ def _extract_pieces(to_extract,
     data = {}
 
     for email, volunteer_data in volunteers_data.items():
-        for raw_piece in volunteer_data:
+        for i, raw_piece in enumerate(volunteer_data):
+            missing_keys = [
+                key for key in
+                ('piece', 'pieceLink', 'sources', 'comments')
+                if key not in raw_piece
+            ]
+            if len(missing_keys) > 0:
+                return _error(
+                    'Missing fields {} for volunteer "{}", piece {}',
+                    ','.join(f'"{key}"' for key in missing_keys),
+                    email, i
+                )
+
             title = raw_piece['piece']
 
             # skip piece
