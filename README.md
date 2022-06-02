@@ -65,7 +65,7 @@ files for the commands. The default configuration is:
     "spreadsheetsIndex": ["output", "spreadsheets.json"],
     "volunteerDataPath": ["output", "data", "by-volunteer", "{email}.json"],
     "pieceDataPath": ["output", "data", "by-piece", "{piece}.json"],
-    "pieceSummary": ["output", "summary.json"]
+    "summary": ["output", "summary.json"]
   }
 }
 ```
@@ -105,7 +105,8 @@ use for created spreadsheets. The default values are:
   },
   "commentFields": {
     "comments": "Comments",
-    "notes": "Notes"
+    "notes": "Notes",
+    "summary": "SUMMARY"
   },
   "values": {
     "defaultBarCount": 100,
@@ -123,6 +124,8 @@ Each field under `"commentFields"` has the following meaning:
   rows or bars.
 - `"notes"`: A single row below the bars section, where source-specific notes
   may be left.
+- `"summary"`: In the master spreadsheet, a column for each source for a summary
+  of all the volunteer inputs.
 
 Each field under `"values"` has the following meaning:
 
@@ -218,9 +221,13 @@ The `"pieceDataPath"` template defines a format for the path of files when
 exporting piece data. It will contain compiled information about the piece,
 including each volunteer-source pair that have matched this piece.
 
-<!-- ### `"pieceSummary"`
+### `"summary"`
 
-TODO -->
+The `"summary"` file consolidates all the information about pieces into one file
+for ease of importing to and exporting from the master spreadsheet. It has a
+very similar format to `"pieceDataPath"` files, except that after all the
+volunteers, there is an additional value under the `"summary"` key, which is a
+summary column for each source in the master spreadsheet.
 
 ## Commands
 
@@ -313,19 +320,30 @@ sources will be skipped. Unknown or missing fields will raise warnings.
   exactly once.
 - `--strict` (flag): Fail on warnings instead of only displaying them.
 
+### `compile_pieces`
+
+Compile all piece JSON data files into a single file.
+
+For most accurate summary, run the `piece_summary` command first.
+
+Requires `"pieceDataPath"`, `"template"`, and `"pieces"`. Reads the existing
+files in `"pieceDataPath"`. Outputs created file to `"summary"`.
+
+To create the output file, `"template"` and `"pieces"` will be used to determine the proper keys and bar counts for each source. Unknown pieces and sources will
+be skipped. Unknown or missing fields will raise warnings.
+
+#### Options
+
+- `-pdp`: A filepath to replace `"pieceDataPath"`. Must include `"{piece}"`
+  exactly once.
+- `-td`: A filepath to replace `"template"`.
+- `-pd`: A filepath to replace `"pieces"`.
+- `-s`: A filepath to replace `"summary"`.
+- `--strict` (flag): Fail on warnings instead of only displaying them.
+
 <!-- TODO: below -->
 
 <!--
-
-### `compile_pieces`
-
-- compiles all piece JSON files into a single file for importing to the master spreadsheet
-- reads the existing files in the `data/by-pieces/` subdirectory
-  - for accurate summary, run `piece_summary` first
-- outputs `summary.json`
-  - the format for this file will be a little different from `<piece>.json`, for ease of importing/exporting from the master spreadsheet
-  - for example, will include a "summary" field (defaults to `""`) for each source
-
 ### `import_master`
 
 - updates the master spreadsheet, or creates it if it doesn't exist in `spreadsheets.json`

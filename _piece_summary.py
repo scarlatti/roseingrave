@@ -40,27 +40,22 @@ def _copy_fields(email, bar_count, obj, values, replace, location):
         Tuple[bool, Dict]: Whether there was a warning,
             and the resulting object.
     """
-    warning = False
 
-    unseen_bars = {}
-    unseen_keys = {key: True for key in obj.keys()}
+    extra_bars = []
+    missing_bars = {}
+    unknown_fields = []
+    missing_fields = {key: True for key in obj.keys()}
 
     # special case: bars
-    if 'bars' not in values:
-        warning = True
-    else:
-        unseen_keys.pop('bars')
-        unseen_bars = {str(i + 1): True for i in range(bar_count)}
+    if 'bars' in values:
+        missing_fields.pop('bars')
+        missing_bars = {str(i + 1): True for i in range(bar_count)}
         obj_bars = obj['bars']
         for bar_num, val in values['bars'].items():
             if bar_num not in obj_bars:
-                warning = True
-                logger.warning(
-                    'Extra bar "{}" for {} (not in range of 1-{})',
-                    bar_num, location, bar_count
-                )
+                extra_bars.append(bar_num)
                 continue
-            unseen_bars.pop(bar_num)
+            missing_bars.pop(bar_num)
             if replace:
                 obj_bars[bar_num] = val
             elif val != "":
@@ -70,31 +65,44 @@ def _copy_fields(email, bar_count, obj, values, replace, location):
         if key in ('name', 'link', 'bars'):
             continue
         if key not in obj:
-            warning = True
-            logger.warning(
-                'Unknown source field "{}" for {} '
-                '(not in template definitions file)',
-                key, location
-            )
+            unknown_fields.append(key)
             continue
-        unseen_keys.pop(key)
+        missing_fields.pop(key)
         if replace:
             obj[key] = val
         elif val != "":
             obj[key][email] = val
 
+    warning = False
+
+    # warn about extra fields
+    if len(extra_bars) > 0:
+        warning = True
+        logger.warning(
+            'Extra bars {} for {} (not in range of 1-{})',
+            ','.join(extra_bars), location, bar_count
+        )
+    if len(unknown_fields) > 0:
+        warning = True
+        logger.warning(
+            'Unknown fields {} for {} '
+            '(not in template definitions file)',
+            ','.join(f'"{key}"' for key in unknown_fields), location
+        )
+
     # warn about missing fields
-    if len(unseen_bars) > 0:
+    if len(missing_fields) > 0:
+        warning = True
+        logger.warning(
+            'Missing fields {} for {}',
+            ','.join(f'"{key}"' for key in missing_fields.keys()),
+            location
+        )
+    if len(missing_bars) > 0:
         warning = True
         logger.warning(
             'Missing bar numbers {} for {}',
-            ','.join(unseen_bars.keys()), location
-        )
-    if len(unseen_keys) > 0:
-        warning = True
-        logger.warning(
-            'Missing source fields {} for {}',
-            ','.join(f'"{k}"' for k in unseen_bars.keys()), location
+            ','.join(missing_bars.keys()), location
         )
 
     return warning
@@ -131,14 +139,14 @@ def _extract_sources(email,
     piece_location = f'volunteer "{email}", piece "{piece.name}"'
 
     for i, raw_source in enumerate(raw_sources):
-        missing_keys = [
+        missing_fields = [
             key for key in ('name', 'link')
             if key not in raw_source
         ]
-        if len(missing_keys) > 0:
+        if len(missing_fields) > 0:
             return _error(
                 'Missing fields {} for {}, source {}',
-                ','.join(f'"{key}"' for key in missing_keys),
+                ','.join(f'"{key}"' for key in missing_fields),
                 piece_location, i
             )
 
@@ -232,7 +240,8 @@ def _extract_pieces(to_extract,
 
         # template names
         values = {
-            key: value() for key in template['metaDataFields'].keys()
+            key: value()
+            for key in template['metaDataFields'].keys()
         }
         # bars
         values['bars'] = {
@@ -245,20 +254,22 @@ def _extract_pieces(to_extract,
 
         return values
 
+    logger.info('Extracting pieces from volunteer data files')
+
     # piece name -> data
     data = {}
 
     for email, volunteer_data in volunteers_data.items():
         for i, raw_piece in enumerate(volunteer_data):
-            missing_keys = [
+            missing_fields = [
                 key for key in
                 ('piece', 'pieceLink', 'sources', 'comments')
                 if key not in raw_piece
             ]
-            if len(missing_keys) > 0:
+            if len(missing_fields) > 0:
                 return _error(
                     'Missing fields {} for volunteer "{}", piece {}',
-                    ','.join(f'"{key}"' for key in missing_keys),
+                    ','.join(f'"{key}"' for key in missing_fields),
                     email, i
                 )
 

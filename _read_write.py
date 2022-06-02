@@ -24,7 +24,8 @@ __all__ = (
     'read_definitions',
     'read_spreadsheets_index', 'write_spreadsheets_index',
     'read_volunteer_data', 'write_volunteer_data',
-    'write_piece_data',
+    'read_piece_data', 'write_piece_data',
+    'write_summary',
 )
 
 # ======================================================================
@@ -52,7 +53,7 @@ FILES = {
             'pieceDataPath': [
                 'output', 'data', 'by-piece', '{piece}.json'
             ],
-            'piecesSummary': ['output', 'summary.json'],
+            'summary': ['output', 'summary.json'],
         },
     },
     'template': {
@@ -75,6 +76,7 @@ FILES = {
         'commentFields': {
             'comments': 'Comments',
             'notes': 'Notes',
+            'summary': 'SUMMARY',
         },
         'values': {
             'defaultBarCount': 100,
@@ -720,6 +722,47 @@ def write_volunteer_data(data, fmt_path=None):
 # ======================================================================
 
 
+def read_piece_data(fmt_path=None):
+    """Read piece data from files.
+
+    Args:
+        fmt_path (Optional[str]): A format path for piece data to use
+            instead.
+            Default is None (use the settings file).
+
+    Returns:
+        Tuple[bool, Dict[str, Dict]]: Whether the read was successful,
+            and a mapping from piece names to data.
+    """
+    ERROR_RETURN = False, None
+
+    def _error(msg):
+        return error(msg, ERROR_RETURN)
+
+    success = _read_settings()
+    if not success:
+        return False
+
+    # validate args
+    try:
+        path = _get_path('pieceDataPath', fmt_path, must_exist=False)
+    except Exception as ex:
+        return _error(ex)
+    if str(path).count('{piece}') != 1:
+        return _error(
+            'Path to piece data files must include "{piece}" exactly '
+            'once'
+        )
+
+    logger.info(f'Reading piece data from files: {path}')
+
+    success, pieces = _read_format_files(path, '{piece}')
+    if not success:
+        return ERROR_RETURN
+
+    return True, pieces
+
+
 def write_piece_data(data, fmt_path=None):
     """Write piece data to files.
     Replaces files if they already exist.
@@ -760,4 +803,26 @@ def write_piece_data(data, fmt_path=None):
     for piece, piece_data in data.items():
         _write_json_file(path.format(piece=piece), piece_data)
 
+    return True
+
+# ======================================================================
+
+
+def write_summary(summary, path=None):
+    """Write to the summary file.
+
+    Args:
+        summary (List[Dict]): The summary.
+        path (Optional[str]): A path to the summary file to use instead.
+            Default is None (use the settings file).
+
+    Returns:
+        bool: Whether the write was successful.
+    """
+
+    success = _read_settings()
+    if not success:
+        return False
+
+    _write_json('summary', summary, path, msg='summary')
     return True
