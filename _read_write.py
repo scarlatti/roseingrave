@@ -152,7 +152,7 @@ def _read_json(key, path=None):
 
 def _write(filepath, data, msg):
     if msg is not None:
-        logger.info(f'Writing {msg} to "{filepath}"')
+        logger.info('Writing {} to "{}"', msg, filepath)
     filepath.write_text(json.dumps(data, indent=2), encoding='utf-8')
 
 
@@ -342,7 +342,7 @@ def read_piece_definitions(template, path=None):
         name = piece.name
         if name in pieces:
             # combine sources with previous piece
-            logger.debug(f'Combining piece "{name}"')
+            logger.debug('Combining piece "{}"', name)
             pieces[name].combine(piece)
         else:
             pieces[name] = piece
@@ -399,14 +399,14 @@ def _read_volunteer_definitions(pieces, path=None, strict=False):
         email = volunteer.email
         if email in volunteers:
             # combine pieces with previous volunteer
-            logger.debug(f'Combining volunteer "{email}"')
+            logger.debug('Combining volunteer "{}"', email)
             volunteers[email].combine(volunteer)
         else:
             volunteers[email] = volunteer
 
         for piece in volunteer.unknown_pieces:
             unknown_pieces = True
-            logger.warning(f'volunteer {i}: unknown piece "{piece}"')
+            logger.warning('volunteer {}: unknown piece "{}"', i, piece)
     if strict and unknown_pieces:
         fail_on_warning()
         return ERROR_RETURN
@@ -668,7 +668,7 @@ def read_volunteer_data(fmt_path=None):
             'exactly once'
         )
 
-    logger.info(f'Reading volunteer data from files: {path}')
+    logger.info('Reading volunteer data from files: {}', path)
 
     success, volunteers = _read_format_files(path, '{email}')
     if not success:
@@ -712,7 +712,7 @@ def write_volunteer_data(data, fmt_path=None):
             'exactly once'
         )
 
-    logger.info(f'Writing volunteer data to files: {path}')
+    logger.info('Writing volunteer data to files: {}', path)
 
     for email, volunteer_data in data.items():
         _write_json_file(path.format(email=email), volunteer_data)
@@ -754,7 +754,7 @@ def read_piece_data(fmt_path=None):
             'once'
         )
 
-    logger.info(f'Reading piece data from files: {path}')
+    logger.info('Reading piece data from files: {}', path)
 
     success, pieces = _read_format_files(path, '{piece}')
     if not success:
@@ -798,7 +798,7 @@ def write_piece_data(data, fmt_path=None):
             'once'
         )
 
-    logger.info(f'Writing piece data to files: {path}')
+    logger.info('Writing piece data to files: {}', path)
 
     for piece, piece_data in data.items():
         _write_json_file(path.format(piece=piece), piece_data)

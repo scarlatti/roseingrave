@@ -44,7 +44,7 @@ def export_spreadsheet(gc, email, link, template, strict):
     """
     ERROR_RETURN = False, None
 
-    logger.debug(f'Working on volunteer "{email}"')
+    logger.debug('Working on volunteer "{}"', email)
 
     success, spreadsheet = open_spreadsheet(gc, link)
     if not success:
@@ -135,8 +135,9 @@ def volunteer_summary(emails, si, td, vdp, strict):
         for email in emails:
             if email not in spreadsheets:
                 logger.warning(
-                    f'Volunteer "{email}" not found in spreadsheets '
-                    'index file'
+                    'Volunteer "{}" not found in spreadsheets index '
+                    'file',
+                    email
                 )
                 continue
             filtered[email] = spreadsheets[email]

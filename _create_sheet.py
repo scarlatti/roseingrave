@@ -186,7 +186,7 @@ def populate_spreadsheets(gc, spreadsheets, volunteers, pieces, strict):
     sheets = {}
 
     for email, volunteer in volunteers.items():
-        logger.debug(f'Working on volunteer "{email}"')
+        logger.debug('Working on volunteer "{}"', email)
 
         link = spreadsheets[email]
         success, spreadsheet = open_spreadsheet(gc, link)
@@ -214,12 +214,14 @@ def populate_spreadsheets(gc, spreadsheets, volunteers, pieces, strict):
 
         for piece_name in volunteer.pieces:
             if piece_name not in sheets:
-                logger.debug(f'Creating sheet for piece "{piece_name}"')
+                logger.debug(
+                    'Creating sheet for piece "{}"', piece_name
+                )
                 sheet = pieces[piece_name].create_sheet(spreadsheet)
                 sheets[piece_name] = sheet
             else:
                 # copy from previously created
-                logger.debug(f'Copying sheet for piece "{piece_name}"')
+                logger.debug('Copying sheet for piece "{}"', piece_name)
                 sheets[piece_name].copy_to(spreadsheet.id)
 
         # delete temp sheet
@@ -303,8 +305,9 @@ def create_sheet(emails, replace, new, td, pd, vd, si, strict):
         for email in emails:
             if email not in volunteers:
                 logger.warning(
-                    f'Volunteer "{email}" not found in volunteers '
-                    'definitions file'
+                    'Volunteer "{}" not found in volunteer definitions '
+                    ' file',
+                    email
                 )
                 continue
             filtered[email] = volunteers[email]
@@ -325,7 +328,7 @@ def create_sheet(emails, replace, new, td, pd, vd, si, strict):
         # if `replace` is false, don't edit existing spreadsheets
         if not replace:
             for email in already_exist:
-                logger.debug(f'Volunteer "{email}" being skipped')
+                logger.debug('Volunteer "{}" being skipped', email)
                 volunteers.pop(email)
 
     if len(volunteers) == 0:

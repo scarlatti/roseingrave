@@ -203,7 +203,8 @@ class Piece:
         name = source.name
         if name in self._sources:
             logger.debug(
-                f'Combining source "{name}" in piece "{self._name}"'
+                'Combining source "{}" in piece "{}"',
+                name, self._name
             )
             self._sources[name].combine(source)
         else:
