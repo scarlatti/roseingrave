@@ -21,6 +21,7 @@ from ._volunteer import Volunteer
 __all__ = (
     'read_template',
     'read_piece_definitions',
+    'read_volunteer_definitions',
     'read_definitions',
     'read_spreadsheets_index', 'write_spreadsheets_index',
     'read_volunteer_data', 'write_volunteer_data',
@@ -33,6 +34,7 @@ __all__ = (
 SETTINGS_FILE = 'roseingrave.json'
 
 # every time the script is run, this gets populated for that run
+# becomes flattened version of the file
 SETTINGS = {}
 
 # required fields and default values for input files
@@ -58,10 +60,20 @@ FILES = {
     },
     'template': {
         # the default template
+        'masterSpreadsheet': {
+            'title': 'Master Spreadsheet',
+            'publicAccess': None,
+            'shareWith': [],
+        },
+        'volunteerSpreadsheet': {
+            'title': '{email}',
+            'publicAccess': None,
+            'shareWithVolunteer': True,
+            'shareWith': [],
+        },
         'metaDataFields': {
             'title': 'Title',
             'tempo': 'Tempo',
-            'key': 'Key',
             'keySig': 'Key sig.',
             'timeSig': 'Time sig.',
             'barCount': 'Bars',
@@ -84,6 +96,8 @@ FILES = {
         },
     },
 }
+# the options for the "publicAccess" field
+PUBLIC_ACCESS_OPTIONS = (None, 'view', 'edit')
 
 # ======================================================================
 
@@ -253,13 +267,15 @@ def _read_settings():
 # ======================================================================
 
 
-def read_template(path=None):
+def read_template(path=None, strict=False):
     """Read the template definitions file.
 
     Args:
         path (Optional[str]): A path to the template definitions file to
             use instead.
             Default is None (use the settings file).
+        strict (bool): Whether to fail on warnings instead of only
+            displaying them.
 
     Returns:
         Tuple[bool, Dict]: Whether the read was successful,
@@ -293,6 +309,29 @@ def read_template(path=None):
         for k, default in level_defaults.items():
             values[level][k] = level_values.get(k, default)
 
+    # public access options
+    warning = False
+    for ss in ('masterSpreadsheet', 'volunteerSpreadsheet'):
+        value = values[ss]['publicAccess']
+        if value not in PUBLIC_ACCESS_OPTIONS:
+            warning = True
+            logger.warning(
+                '{}: "{}"."publicAccess": invalid value "{}" '
+                '(must be null, "view", or "edit")',
+                key, ss, value
+            )
+            values[ss]['publicAccess'] = FILES[key][ss]['publicAccess']
+    swv = values['volunteerSpreadsheet']['shareWithVolunteer']
+    if swv not in (True, False):
+        warning = True
+        logger.warning(
+            '{}: "volunteerSpreadsheet"."shareWithVolunteer": '
+            'invalid value "{}" (must be true or false)',
+            key, swv
+        )
+    if strict and warning:
+        fail_on_warning()
+        return ERROR_RETURN
     # default bar count must be positive
     if values['values']['defaultBarCount'] <= 0:
         return _error(f'{key}: "defaultBarCount" must be positive')
@@ -359,7 +398,7 @@ def read_piece_definitions(template, path=None):
     return True, pieces
 
 
-def _read_volunteer_definitions(pieces, path=None, strict=False):
+def read_volunteer_definitions(pieces, path=None, strict=False):
     """Read the volunteer definitions file.
     Repeated volunteers will be combined.
     Unknown pieces will be ignored.
@@ -459,7 +498,7 @@ def read_definitions(template_path=None,
     if not success:
         return ERROR_RETURN
 
-    success, template = read_template(template_path)
+    success, template = read_template(template_path, strict)
     if not success:
         return ERROR_RETURN
 
@@ -467,7 +506,7 @@ def read_definitions(template_path=None,
     if not success:
         return ERROR_RETURN
 
-    success, volunteers = _read_volunteer_definitions(
+    success, volunteers = read_volunteer_definitions(
         pieces, volunteers_path, strict
     )
     if not success:

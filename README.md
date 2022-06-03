@@ -88,10 +88,20 @@ use for created spreadsheets. The default values are:
 
 ```json
 {
+  "masterSpreadsheet": {
+    "title": "Master Spreadsheet",
+    "publicAccess": null,
+    "shareWith": []
+  },
+  "volunteerSpreadsheet": {
+    "title": "{email}",
+    "publicAccess": null,
+    "shareWithVolunteer": true,
+    "shareWith": []
+  },
   "metaDataFields": {
     "title": "Title",
     "tempo": "Tempo",
-    "key": "Key",
     "keySig": "Key sig.",
     "timeSig": "Time sig.",
     "barCount": "Bars",
@@ -115,13 +125,28 @@ use for created spreadsheets. The default values are:
 }
 ```
 
-Each field under `"metaDataFields"` defines the header name of each row above
-the bars section.
+The `"masterSpreadsheet"` and `"volunteerSpreadsheet"` values define information
+for the master and volunteer spreadsheets respectively:
+
+- `"title"`: The title of the spreadsheet, or the format of the spreadsheet for
+  `"volunteerSpreadsheet"`, with the format string `"{email}"` representing the
+  email of the volunteer.
+- `"publicAccess"`: The public access of the spreadsheet. It can either be
+  `null` (restricted), `"view"`, or `"edit"`. Unknown values will default to
+  `null`.
+- `"shareWith"`: An array of email addresses to give edit access of the
+  spreadsheet to.
+
+`"volunteerSpreadsheet.shareWithVolunteer"` is a boolean value for whether the
+spreadsheet should be shared with the volunteer's email.
+
+Each field under `"metaDataFields"` defines the name of each header, which go in
+the rows above the bars section.
 
 Each field under `"commentFields"` has the following meaning:
 
 - `"columns"`: The right-most column, where comments can be left on any of the
-  rows or bars.
+  headers or bars.
 - `"notes"`: A single row below the bars section, where source-specific notes
   may be left.
 - `"summary"`: In the master spreadsheet, a column for each source for a summary
@@ -140,9 +165,10 @@ font weight, etc.
 ### `"pieces"`
 
 The `"pieces"` file defines each piece and the sources for each piece. Each
-piece can have an optional link. Each source requires a name and a link and also
-has an optional bar count. The resulting bar section for this piece will be the
-max of all the bar counts given, or a default if no bar counts are given.
+piece can have an optional link and bar count. Each source requires a name and a
+link and also has an optional bar count. The resulting bar section for this
+piece will be the max of all the bar counts given, or a default if no bar counts
+are given.
 
 The file should have the following format:
 
@@ -150,6 +176,7 @@ The file should have the following format:
 [
   {
     "title": "pieceName1",
+    "barCount": 50,
     "sources": [
       {
         "name": "sourceName1",
@@ -344,14 +371,6 @@ be skipped. Unknown or missing fields will raise warnings.
 <!-- TODO: below -->
 
 <!--
-### `import_master`
-
-- updates the master spreadsheet, or creates it if it doesn't exist in `spreadsheets.json`
-- requires `summary.json` and `template_definition.json`
-  - for accurate sheet, run `compile_pieces` first
-  - this could be issued as a warning with loguru to inform the user
-- if created the sheet, updates `spreadsheets.json` with a "MASTER" key and the link
-
 ### `export_master`
 
 - exports the master spreadsheet to a JSON file
