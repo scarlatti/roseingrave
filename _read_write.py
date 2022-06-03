@@ -22,7 +22,6 @@ __all__ = (
     'read_template',
     'read_piece_definitions',
     'read_volunteer_definitions',
-    'read_definitions',
     'read_spreadsheets_index', 'write_spreadsheets_index',
     'read_volunteer_data', 'write_volunteer_data',
     'read_piece_data', 'write_piece_data',
@@ -397,6 +396,8 @@ def read_piece_definitions(template, path=None):
 
     return True, pieces
 
+# ======================================================================
+
 
 def read_volunteer_definitions(pieces, path=None, strict=False):
     """Read the volunteer definitions file.
@@ -460,59 +461,6 @@ def read_volunteer_definitions(pieces, path=None, strict=False):
         return ERROR_RETURN
 
     return True, volunteers
-
-
-def read_definitions(template_path=None,
-                     pieces_path=None,
-                     volunteers_path=None,
-                     strict=False,
-                     ):
-    """Read the template file and the definitions files.
-    Repeated pieces and volunteers will be combined.
-    Unknown pieces for volunteers will be ignored.
-
-    Args:
-        template_path (Optional[str]): A path to the template
-            definitions file to use instead.
-            Default is None (use the settings file).
-        pieces_path (Optional[str]): A path to the piece definitions
-            file to use instead.
-            Default is None (use the settings file).
-        volunteers_path (Optional[str]): A path to the volunteer
-            definitions file to use instead.
-            Default is None (use the settings file).
-        strict (bool): Whether to fail on warnings instead of only
-            displaying them.
-            Default is False.
-
-    Returns:
-        Tuple[bool, Dict, Dict[str, Piece], Dict[str, Volunteer]]:
-            Whether the read was successful,
-            the template settings,
-            a mapping from piece names to piece objects, and
-            a mapping from volunteer emails to volunteer objects.
-    """
-    ERROR_RETURN = False, None, None, None
-
-    success = _read_settings()
-    if not success:
-        return ERROR_RETURN
-
-    success, template = read_template(template_path, strict)
-    if not success:
-        return ERROR_RETURN
-
-    success, pieces = read_piece_definitions(template, pieces_path)
-    if not success:
-        return ERROR_RETURN
-
-    success, volunteers = read_volunteer_definitions(
-        pieces, volunteers_path, strict
-    )
-    if not success:
-        return ERROR_RETURN
-
-    return True, template, pieces, volunteers
 
 # ======================================================================
 

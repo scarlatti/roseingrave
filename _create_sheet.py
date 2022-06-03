@@ -11,7 +11,9 @@ from loguru import logger
 
 from ._shared import fail_on_warning, error
 from ._read_write import (
-    read_definitions,
+    read_template,
+    read_piece_definitions,
+    read_volunteer_definitions,
     read_spreadsheets_index, write_spreadsheets_index,
 )
 from ._sheets import (
@@ -104,13 +106,13 @@ def share(spreadsheet,
 
 # ======================================================================
 
-def create_spreadsheets(gc, spreadsheets, owner, emails):
+def create_spreadsheets(gc, spreadsheets, template, emails):
     """Create spreadsheets for the given volunteers.
 
     Args:
         gc (gspread.Client): The client.
         spreadsheets (Dict[str, str]): The existing spreadsheets.
-        owner (str): The email of the owner.
+        template (Dict): The template settings.
         emails (Iterable[str]): The emails of the volunteers.
 
     Returns:
@@ -128,35 +130,46 @@ def create_spreadsheets(gc, spreadsheets, owner, emails):
         for ss in created:
             gc.del_spreadsheet(ss)
 
+    ss_settings = template['volunteerSpreadsheet']
+    title_fmt = ss_settings['title']
+    public_access = ss_settings['publicAccess']
+    share_with_volunteer = ss_settings['shareWithVolunteer']
+    share_with = ss_settings['shareWith']
+
     for email in emails:
-        spreadsheet = gc.create(email)
+        spreadsheet = gc.create(title_fmt.format(email=email))
         created.append(spreadsheet.id)
 
         try:
-            # make owner
-            # FIXME: change role to "owner"
-            success = share(spreadsheet, owner, 'writer')
-            if not success:
-                delete_created()
-                return False
+            if share_with_volunteer:
+                # make volunteer an editor
+                msg = (
+                    'This is an invitation for you to collaborate on a '
+                    'crowd-sourcing spreadsheet for a project run by '
+                    'Roseingrave. Thank you for accepting our '
+                    'invitation as a volunteer.'
+                )
+                success = share(spreadsheet, email, 'writer', True, msg)
+                if not success:
+                    delete_created()
+                    return False
 
-            # make volunteer an editor
-            msg = (
-                'This is an invitation for you to collaborate on a '
-                'crowd-sourcing spreadsheet for a project run by '
-                'Roseingrave. Thank you for accepting our invitation '
-                'as a volunteer.'
-            )
-            success = share(spreadsheet, email, 'writer', True, msg)
-            if not success:
-                delete_created()
-                return False
+            for share_email in share_with:
+                success = share(spreadsheet, share_email, 'writer')
+                if not success:
+                    delete_created()
+                    return False
         except:
             delete_created()
             raise
 
-        # make world-readable
-        spreadsheet.share(None, perm_type='anyone', role='reader')
+        role = None
+        if public_access == 'view':
+            role = 'reader'
+        elif public_access == 'edit':
+            role = 'writer'
+        if role is not None:
+            spreadsheet.share(None, perm_type='anyone', role=role)
 
         spreadsheets[email] = spreadsheet.url
 
@@ -290,8 +303,15 @@ def create_sheet(emails, replace, new, td, pd, vd, si, strict):
     if not success:
         return
 
-    success, template, pieces, volunteers = \
-        read_definitions(td, pd, vd, strict)
+    success, template = read_template(td, strict)
+    if not success:
+        return
+
+    success, pieces = read_piece_definitions(template, pd)
+    if not success:
+        return
+
+    success, volunteers = read_volunteer_definitions(pieces, vd, strict)
     if not success:
         return
 
@@ -337,7 +357,7 @@ def create_sheet(emails, replace, new, td, pd, vd, si, strict):
 
     # create new spreadsheets
     success = create_spreadsheets(
-        gc, spreadsheets, template['owner'], create_for
+        gc, spreadsheets, template, create_for
     )
     if not success:
         return
