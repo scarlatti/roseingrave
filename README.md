@@ -102,15 +102,17 @@ use for created spreadsheets. The default values are:
   "metaDataFields": {
     "title": "Title",
     "tempo": "Tempo",
+    "clefs": "Clefs (if other than G and F)",
     "keySig": "Key sig.",
     "timeSig": "Time sig.",
-    "barCount": "Bars",
-    "compass": "Compass",
-    "clefs": "Clefs (if other than G and F)",
-    "endOrRepeat": "Endings and Repeat signs",
+    "barCount": "Number of bars",
+    "compassHigh": "Highest pitch note",
+    "compassLow": "Lowest pitch note",
+    "hand": "Hand signs",
+    "endSigns": "Endings signs",
+    "repeatSigns": "Repeat signs",
     "articulation": "Articulation signs",
     "dynamic": "Dynamic signs",
-    "hand": "Hand signs",
     "otherIndications": "Other indications"
   },
   "commentFields": {
