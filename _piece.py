@@ -13,6 +13,8 @@ from gspread.utils import (
 )
 from loguru import logger
 
+from ._shared import error
+
 # ======================================================================
 
 __all__ = ('Piece',)
@@ -144,7 +146,7 @@ class Piece:
         self._link = kwargs.get('link', None)
 
         self._sources = {}
-        self._bar_count = None
+        self._bar_count = kwargs.get('barCount', None)
         for i, args in enumerate(kwargs['sources']):
             try:
                 source = Source(args)
@@ -258,215 +260,15 @@ class Piece:
         # put the values
         sheet.update(values, raw=False)
 
-        requests = []
-
-        blank_row1 = len(self._values[0])
+        comments_col = len(row1[0])
+        blank_row1 = 1 + len(self._values[0])  # row 1 + headers
         blank_row2 = blank_row1 + bar_count + 1
         notes_row = blank_row2 + 1
 
-        # make everything middle aligned
-        requests.append({
-            'repeatCell': {
-                'range': {'sheetId': sheet.id},
-                'cell': {
-                    'userEnteredFormat': {
-                        'verticalAlignment': 'MIDDLE',
-                    },
-                },
-                'fields': 'userEnteredFormat.verticalAlignment',
-            }
-        })
-
-        # formatting
-        bolded = {
-            'cell': {
-                'userEnteredFormat': {
-                    'textFormat': {'bold': True},
-                },
-            },
-            'fields': 'userEnteredFormat.textFormat.bold',
-        }
-        wrapped_top_align = {
-            'cell': {
-                'userEnteredFormat': {
-                    'wrapStrategy': 'WRAP',
-                    'verticalAlignment': 'TOP',
-                },
-            },
-            'fields': ','.join((
-                'userEnteredFormat.wrapStrategy',
-                'userEnteredFormat.verticalAlignment',
-            ))
-        }
-        range_formats = (
-            # template row headers
-            (f'A2:A{blank_row1 - 1}', bolded),
-            # sources
-            ('A1:1', bolded),
-            # notes header
-            (f'A{notes_row}', bolded),
-            # notes row
-            (f'B{notes_row}:{notes_row}', wrapped_top_align),
+        _format_sheet(
+            spreadsheet, sheet.id, self._template,
+            comments_col, blank_row1, blank_row2, notes_row
         )
-
-        for range_name, fmt in range_formats:
-            requests.append({
-                'repeatCell': {
-                    'range': gridrange(range_name, sheet_id=sheet.id),
-                    **fmt,
-                }
-            })
-
-        # borders around empty rows
-        solid_black = {
-            'style': 'SOLID',
-            'color': {'red': 0, 'green': 0, 'blue': 0},
-        }
-        top_bottom_border = {
-            'top': solid_black,
-            'bottom': solid_black,
-        }
-        range_borders = (
-            (f'A{blank_row1}:{blank_row1}', top_bottom_border),
-            (f'A{blank_row2}:{blank_row2}', top_bottom_border),
-        )
-
-        # dotted border after every fifth bar
-        interval = 5
-        bottom_dotted_border = {
-            'bottom': {
-                'style': 'DOTTED',
-                'color': {'red': 0, 'green': 0, 'blue': 0},
-            }
-        }
-        range_borders += tuple(
-            (f'A{row}:{row}', bottom_dotted_border) for row in
-            range(blank_row1 + interval, blank_row2 - 1, interval)
-        )
-
-        # double border after the first row
-        # double_border = {
-        #     'style': 'DOUBLE',
-        #     'color': {'red': 0, 'green': 0, 'blue': 0},
-        # }
-        # range_borders += (('1:1', {'bottom': double_border}),)
-
-        for range_name, borders in range_borders:
-            requests.append({
-                'updateBorders': {
-                    'range': gridrange(range_name, sheet_id=sheet.id),
-                    **borders,
-                }
-            })
-
-        # double border on the right of every column
-        # for column in range(1, 1 + len(self._sources)):
-        #     requests.append({
-        #         'updateBorders': {
-        #             'range': {
-        #                 'sheetId': sheet.id,
-        #                 'startColumnIndex': column,
-        #                 'endColumnIndex': column + 1,
-        #             },
-        #             'right': double_border,
-        #         }
-        #     })
-
-        # make column 1 width 200
-        requests.append({
-            'updateDimensionProperties': {
-                'properties': {
-                    'pixelSize': 200,
-                },
-                'fields': 'pixelSize',
-                'range': {
-                    'sheet_id': sheet.id,
-                    'dimension': 'COLUMNS',
-                    'startIndex': 0,
-                    'endIndex': 1,
-                },
-            }
-        })
-        # make all other columns width 150
-        requests.append({
-            'updateDimensionProperties': {
-                'properties': {
-                    'pixelSize': 150,
-                },
-                'fields': 'pixelSize',
-                'range': {
-                    'sheet_id': sheet.id,
-                    'dimension': 'COLUMNS',
-                    'startIndex': 1,
-                },
-            }
-        })
-
-        # make notes row proper height
-        requests.append({
-            'updateDimensionProperties': {
-                'properties': {
-                    'pixelSize':
-                        self._template['values']['notesRowHeight'],
-                },
-                'fields': 'pixelSize',
-                'range': {
-                    'sheet_id': sheet.id,
-                    'dimension': 'ROWS',
-                    'startIndex': notes_row - 1,  # 0-indexed here
-                    'endIndex': notes_row,
-                },
-            }
-        })
-
-        # freeze row 1 and column 1
-        requests.append({
-            'updateSheetProperties': {
-                'properties': {
-                    'sheetId': sheet.id,
-                    'gridProperties': {
-                        'frozenRowCount': 1,
-                        'frozenColumnCount': 1,
-                    },
-                },
-                'fields': ','.join((
-                    'gridProperties.frozenRowCount',
-                    'gridProperties.frozenColumnCount',
-                )),
-            }
-        })
-
-        # add banding (default style white/gray with header and footer)
-        header_color = 'bdbdbd'
-        color1 = 'ffffff'
-        color2 = 'f3f3f3'
-        footer_color = 'dedede'
-
-        def hex_to_rgb(hex_color):
-            colors = ('red', 'green', 'blue')
-            return {
-                key: int(hex_color[i:i+2], 16) / 255
-                for key, i in zip(colors, range(0, 6, 2))
-            }
-
-        requests.append({
-            'addBanding': {
-                'bandedRange': {
-                    'range': {
-                        'sheetId': sheet.id,
-                        'startColumnIndex': 1,
-                    },
-                    'rowProperties': {
-                        'headerColor': hex_to_rgb(header_color),
-                        'firstBandColor': hex_to_rgb(color1),
-                        'secondBandColor': hex_to_rgb(color2),
-                        'footerColor': hex_to_rgb(footer_color),
-                    },
-                },
-            }
-        })
-
-        spreadsheet.batch_update({'requests': requests})
 
         return sheet
 
@@ -505,11 +307,11 @@ class Piece:
             link, name = _parse_hyperlink(values[0][col])
             if link is None:
                 col_letter = rowcol_to_a1(1, col+1)[:-1]
-                msg = (
-                    f'column {col_letter} doesn\'t have a valid '
-                    'hyperlink'
+                error(
+                    f'sheet "{sheet.title}": column {col_letter} '
+                    'doesn\'t have a valid hyperlink'
                 )
-                return False, msg
+                return False, None
 
             source = {
                 'name': name,
@@ -542,3 +344,235 @@ class Piece:
             'sources': sources,
             'comments': comments,
         }
+
+# ======================================================================
+
+
+def _format_sheet(spreadsheet, sheet_id, template,
+                  comments_col, blank_row1, blank_row2, notes_row):
+    """Format a piece sheet."""
+
+    def hex_to_rgb(hex_color):
+        """Changes a hex color code (no pound) to an RGB color dict.
+        Each value is a fraction decimal instead of an integer.
+        """
+        colors = ('red', 'green', 'blue')
+        return {
+            key: int(hex_color[i:i+2], 16) / 255
+            for key, i in zip(colors, range(0, 6, 2))
+        }
+
+    BLACK = hex_to_rgb('000000')
+
+    requests = []
+
+    # make everything middle aligned
+    requests.append({
+        'repeatCell': {
+            'range': {'sheetId': sheet_id},
+            'cell': {
+                'userEnteredFormat': {
+                    'verticalAlignment': 'MIDDLE',
+                },
+            },
+            'fields': 'userEnteredFormat.verticalAlignment',
+        }
+    })
+
+    # formatting
+    bolded = {
+        'cell': {
+            'userEnteredFormat': {
+                'textFormat': {'bold': True},
+            },
+        },
+        'fields': 'userEnteredFormat.textFormat.bold',
+    }
+    centered_bolded = {
+        'cell': {
+            'userEnteredFormat': {
+                'horizontalAlignment': 'CENTER',
+                'textFormat': {'bold': True},
+            },
+        },
+        'fields': ','.join((
+            'userEnteredFormat.horizontalAlignment',
+            'userEnteredFormat.textFormat.bold',
+        ))
+    }
+    wrapped_top_align = {
+        'cell': {
+            'userEnteredFormat': {
+                'wrapStrategy': 'WRAP',
+                'verticalAlignment': 'TOP',
+            },
+        },
+        'fields': ','.join((
+            'userEnteredFormat.wrapStrategy',
+            'userEnteredFormat.verticalAlignment',
+        ))
+    }
+    source_end_column = rowcol_to_a1(1, comments_col - 1)
+    comments_column = rowcol_to_a1(1, comments_col)[:-1]
+    range_formats = (
+        # piece name
+        ('A1', bolded),
+        # headers
+        (f'A2:A{blank_row1 - 1}', bolded),
+        # sources
+        (f'B1:{source_end_column}', centered_bolded),
+        # comments header
+        (f'{comments_column}1', bolded),
+        # notes header
+        (f'A{notes_row}', bolded),
+        # notes row
+        (f'B{notes_row}:{notes_row}', wrapped_top_align),
+    )
+    for range_name, fmt in range_formats:
+        requests.append({
+            'repeatCell': {
+                'range': gridrange(range_name, sheet_id=sheet_id),
+                **fmt,
+            }
+        })
+
+    range_borders = []
+
+    # borders around empty rows
+    # double border after the first row
+    # double_border = {
+    #     'style': 'DOUBLE',
+    #     'color': BLACK,
+    # }
+    # range_borders += [
+    #     ('1:1', {'bottom': double_border}),
+    # ]
+
+    solid_black = {
+        'style': 'SOLID',
+        'color': BLACK,
+    }
+    top_bottom_border = {
+        'top': solid_black,
+        'bottom': solid_black,
+    }
+    range_borders += [
+        (f'A{blank_row1}:{blank_row1}', top_bottom_border),
+        (f'A{blank_row2}:{blank_row2}', top_bottom_border),
+    ]
+
+    # dotted border after every fifth bar
+    interval = 5
+    bottom_dotted_border = {
+        'bottom': {
+            'style': 'DOTTED',
+            'color': BLACK,
+        }
+    }
+    range_borders += [
+        (f'A{row}:{row}', bottom_dotted_border) for row in
+        range(blank_row1 + interval, blank_row2 - 1, interval)
+    ]
+
+    for range_name, borders in range_borders:
+        requests.append({
+            'updateBorders': {
+                'range': gridrange(range_name, sheet_id=sheet_id),
+                **borders,
+            }
+        })
+
+    # double border on the right of every column
+    # for column in range(1, 1 + len(self._sources)):
+    #     requests.append({
+    #         'updateBorders': {
+    #             'range': {
+    #                 'sheetId': sheet_id,
+    #                 'startColumnIndex': column,
+    #                 'endColumnIndex': column + 1,
+    #             },
+    #             'right': double_border,
+    #         }
+    #     })
+
+    column_widths = (
+        # column 1: width 200
+        ({'startIndex': 0, 'endIndex': 1}, 200),
+        # all other columns: width 150
+        ({'startIndex': 1}, 150),
+    )
+    for pos, width in column_widths:
+        requests.append({
+            'updateDimensionProperties': {
+                'properties': {
+                    'pixelSize': width,
+                },
+                'fields': 'pixelSize',
+                'range': {
+                    'sheet_id': sheet_id,
+                    'dimension': 'COLUMNS',
+                    **pos
+                },
+            }
+        })
+
+    # make notes row proper height
+    requests.append({
+        'updateDimensionProperties': {
+            'properties': {
+                'pixelSize': template['values']['notesRowHeight'],
+            },
+            'fields': 'pixelSize',
+            'range': {
+                'sheet_id': sheet_id,
+                'dimension': 'ROWS',
+                'startIndex': notes_row - 1,  # 0-indexed here
+                'endIndex': notes_row,
+            },
+        }
+    })
+
+    # freeze row 1 and column 1
+    requests.append({
+        'updateSheetProperties': {
+            'properties': {
+                'sheetId': sheet_id,
+                'gridProperties': {
+                    'frozenRowCount': 1,
+                    'frozenColumnCount': 1,
+                },
+            },
+            'fields': ','.join((
+                'gridProperties.frozenRowCount',
+                'gridProperties.frozenColumnCount',
+            )),
+        }
+    })
+
+    # default banding style white/gray
+    white_gray_banding = {
+        'rowProperties': {
+            'headerColor': hex_to_rgb('bdbdbd'),
+            'firstBandColor': hex_to_rgb('ffffff'),
+            'secondBandColor': hex_to_rgb('f3f3f3'),
+            # 'footerColor': hex_to_rgb('dedede'),
+        },
+    }
+    # don't include last column (comments)
+    # don't include the last row (notes row)
+    requests.append({
+        'addBanding': {
+            'bandedRange': {
+                'range': {
+                    'sheetId': sheet_id,
+                    'startColumnIndex': 1,
+                    'endColumnIndex': comments_col - 1,
+                    'endRowIndex': notes_row - 1,
+                },
+                **white_gray_banding,
+            },
+        }
+    })
+
+    body = {'requests': requests}
+    spreadsheet.batch_update(body)
