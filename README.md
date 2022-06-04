@@ -339,10 +339,10 @@ sources will be skipped. Unknown or missing fields will raise warnings.
 
 #### Options
 
-- `-vdp`: A filepath to replace `"volunteerDataPath"`. Must include `"{email}"`
-  exactly once.
 - `-td`: A filepath to replace `"template"`.
 - `-pd`: A filepath to replace `"pieces"`.
+- `-vdp`: A filepath to replace `"volunteerDataPath"`. Must include `"{email}"`
+  exactly once.
 - `-pdp`: A filepath to replace `"pieceDataPath"`. Must include `"{piece}"`
   exactly once.
 - `--strict` (flag): Fail on warnings instead of only displaying them.

@@ -14,6 +14,7 @@ from loguru import logger
 
 from ._shared import fail_on_warning, error
 from ._piece import Piece
+from ._piece_data import PieceData
 from ._volunteer import Volunteer
 
 # ======================================================================
@@ -343,7 +344,7 @@ def read_template(path=None, strict=False):
 # ======================================================================
 
 
-def read_piece_definitions(template, path=None):
+def read_piece_definitions(template, path=None, as_data=False):
     """Read the piece definitions file.
     Repeated pieces will be combined.
 
@@ -352,9 +353,12 @@ def read_piece_definitions(template, path=None):
         path (Optional[str]): A path to the piece definitions file to
             use instead.
             Default is None (use the settings file).
+        as_data (bool): Whether to return the piece objects as data.
+            Default is False.
 
     Returns:
-        Tuple[bool, Dict[str, Piece]]: Whether the read was successful,
+        Tuple[bool, Dict[str, Union[Piece, PieceData]]]:
+            Whether the read was successful,
             and a mapping from piece names to piece objects.
     """
     ERROR_RETURN = False, None
@@ -393,6 +397,12 @@ def read_piece_definitions(template, path=None):
             _error(f'piece "{piece.name}": no sources found')
     if invalid:
         return ERROR_RETURN
+
+    if as_data:
+        pieces = {
+            title: PieceData(piece)
+            for title, piece in pieces.items()
+        }
 
     return True, pieces
 
@@ -620,13 +630,19 @@ def _read_format_files(fmt_path, arg):
 # ======================================================================
 
 
-def read_volunteer_data(fmt_path=None):
+def read_volunteer_data(pieces, fmt_path=None, strict=False):
     """Read volunteer data from files.
+    Unknown and repeated pieces and sources will be ignored.
 
     Args:
+        pieces (Dict[str, PieceData]): A mapping from piece names to
+            piece data.
         fmt_path (Optional[str]): A format path for volunteer data to
             use instead.
             Default is None (use the settings file).
+        strict (bool): Whether to fail on warnings instead of only
+            displaying them.
+            Default is False.
 
     Returns:
         Tuple[bool, Dict[str, List]]: Whether the read was successful,
@@ -634,8 +650,8 @@ def read_volunteer_data(fmt_path=None):
     """
     ERROR_RETURN = False, None
 
-    def _error(msg):
-        return error(msg, ERROR_RETURN)
+    def _error(msg, *args, **kwargs):
+        return error(msg.format(*args, **kwargs), ERROR_RETURN)
 
     success = _read_settings()
     if not success:
@@ -657,9 +673,153 @@ def read_volunteer_data(fmt_path=None):
 
     logger.info('Reading volunteer data from files: {}', path)
 
-    success, volunteers = _read_format_files(path, '{email}')
+    success, raw_data = _read_format_files(path, '{email}')
     if not success:
         return ERROR_RETURN
+
+    # validate data
+    volunteers = {}
+    for email, volunteer_pieces in raw_data.items():
+        v_loc = f'volunteer "{email}"'
+
+        fixed_pieces = {}
+        for i, raw_piece in enumerate(volunteer_pieces):
+            missing_fields = [
+                key for key in
+                ('title', 'link', 'sources', 'comments')
+                if key not in raw_piece
+            ]
+            if len(missing_fields) > 0:
+                return _error(
+                    'Missing fields {} for {}, piece {}',
+                    ','.join(f'"{key}"' for key in missing_fields),
+                    v_loc, i
+                )
+
+            title = raw_piece['title']
+            p_link = raw_piece['link']
+
+            if title not in pieces:
+                logger.warning(
+                    'Unknown piece "{}" for {} '
+                    '(not in piece definitions file)',
+                    title, v_loc
+                )
+                if strict:
+                    fail_on_warning()
+                    return ERROR_RETURN
+                continue
+            piece_obj = pieces[title]
+
+            if title in fixed_pieces:
+                logger.warning(
+                    'Repeated piece "{}" for {}', title, v_loc
+                )
+                if strict:
+                    fail_on_warning()
+                    return ERROR_RETURN
+                continue
+
+            p_loc = f'{v_loc}, piece "{title}"'
+
+            if piece_obj.link is None:
+                if p_link is not None:
+                    logger.warning(
+                        'Extra piece link "{}" for {}',
+                        p_link, p_loc
+                    )
+                    if strict:
+                        fail_on_warning()
+                        return ERROR_RETURN
+            else:
+                if p_link is None:
+                    logger.warning('Missing piece link for {}', p_loc)
+                    if strict:
+                        fail_on_warning()
+                        return ERROR_RETURN
+                elif p_link != piece_obj.link:
+                    logger.warning(
+                        'Incorrect piece link "{}" for {}',
+                        p_link, p_loc
+                    )
+                    if strict:
+                        fail_on_warning()
+                        return ERROR_RETURN
+
+            sources = {}
+            for j, raw_source in enumerate(raw_piece['sources']):
+                missing_fields = [
+                    key for key in ('name', 'link')
+                    if key not in raw_source
+                ]
+                if len(missing_fields) > 0:
+                    return _error(
+                        'Missing fields {} for {}, source {}',
+                        ','.join(f'"{key}"' for key in missing_fields),
+                        p_loc, j
+                    )
+
+                name = raw_source['name']
+                s_link = raw_source['link']
+
+                if not piece_obj.has_source(name):
+                    logger.warning(
+                        'Unknown source "{}" for {} '
+                        '(not in piece definitions file)',
+                        name, p_loc
+                    )
+                    if strict:
+                        fail_on_warning()
+                        return ERROR_RETURN
+                    continue
+
+                if name in sources:
+                    logger.warning(
+                        'Repeated source "{}" for {}', name, p_loc
+                    )
+                    if strict:
+                        fail_on_warning()
+                        return ERROR_RETURN
+                    continue
+
+                s_loc = f'{p_loc}, source "{name}"'
+
+                if s_link != piece_obj.get_source(name).link:
+                    logger.warning(
+                        'Incorrect source link "{}" for {}',
+                        s_link, s_loc
+                    )
+                    if strict:
+                        fail_on_warning()
+                        return ERROR_RETURN
+
+                warning, source = piece_obj.with_defaults(
+                    raw_source, s_loc
+                )
+                if strict and warning:
+                    fail_on_warning()
+                    return ERROR_RETURN
+
+                sources[name] = {
+                    'name': name,
+                    'link': raw_source['link'],
+                    **source,
+                }
+
+            warning, comments = piece_obj.with_defaults(
+                raw_piece['comments'], p_loc, True
+            )
+            if strict and warning:
+                return ERROR_RETURN
+
+            fixed_pieces[title] = {
+                'title': title,
+                'link': p_link,
+                'sources': sources,
+                'comments': comments,
+            }
+
+        volunteers[email] = fixed_pieces
 
     return True, volunteers
 

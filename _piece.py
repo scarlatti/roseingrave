@@ -339,8 +339,8 @@ class Piece:
         comments['bars'] = bars_comments
 
         return True, {
-            'piece': piece_name,
-            'pieceLink': piece_link,
+            'title': piece_name,
+            'link': piece_link,
             'sources': sources,
             'comments': comments,
         }
