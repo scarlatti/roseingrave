@@ -254,9 +254,9 @@ including each volunteer-source pair that have matched this piece.
 
 The `"summary"` file consolidates all the information about pieces into one file
 for ease of importing to and exporting from the master spreadsheet. It has a
-very similar format to `"pieceDataPath"` files, except that after all the
-volunteers, there is an additional value under the `"summary"` key, which is a
-summary column for each source in the master spreadsheet.
+very similar format to `"pieceDataPath"` files, except that each source has an
+additional field `"summary"`, which is a summary column for each source in the
+master spreadsheet.
 
 ## Commands
 
@@ -363,10 +363,10 @@ be skipped. Unknown or missing fields will raise warnings.
 
 #### Options
 
-- `-pdp`: A filepath to replace `"pieceDataPath"`. Must include `"{piece}"`
-  exactly once.
 - `-td`: A filepath to replace `"template"`.
 - `-pd`: A filepath to replace `"pieces"`.
+- `-pdp`: A filepath to replace `"pieceDataPath"`. Must include `"{piece}"`
+  exactly once.
 - `-s`: A filepath to replace `"summary"`.
 - `--strict` (flag): Fail on warnings instead of only displaying them.
 

@@ -19,20 +19,15 @@ __all__ = ('PieceData',)
 class SourceData:
     """The data of a source from data files."""
 
-    def __init__(self, piece, source, is_summary=False):
+    def __init__(self, piece, source):
         """Initialize the source data from a source.
 
         Args:
             piece (PieceData): The parent piece.
             source (Source): The source.
-            is_summary (bool): Whether this source data is for the
-                summary of a piece.
-                If True, an extra "summary" volunteer will be added.
-                Default is False.
         """
 
         self._piece = piece
-        self._is_summary = is_summary
 
         self._name = source.name
         self._link = source.link
@@ -46,10 +41,19 @@ class SourceData:
     def link(self):
         return self._link
 
-    def to_json(self):
-        """Return a JSON representation of this source data."""
+    def to_json(self, has_summary=False):
+        """Return a JSON representation of this source data.
+
+        Args:
+            has_summary (bool): Whether this source data should contain
+                a "summary" volunteer.
+                Default is False.
+
+        Returns:
+            Dict: A JSON dict.
+        """
         volunteers = self._volunteers
-        if self._is_summary:
+        if has_summary:
             volunteers['summary'] = self._piece.make_default()
         return {
             'name': self._name,
@@ -76,16 +80,11 @@ class SourceData:
 class PieceData:
     """The data of a piece from data files."""
 
-    def __init__(self, piece, is_summary=False):
+    def __init__(self, piece):
         """Initialize the piece data from a piece.
 
         Args:
             piece (Piece): The piece.
-            is_summary (bool): Whether this piece data is for the
-                summary of a piece.
-                If True, all source data will have an extra "summary"
-                volunteer.
-                Default is False.
         """
 
         self._bar_count = piece.final_bar_count
@@ -94,7 +93,7 @@ class PieceData:
         self._name = piece.name
         self._link = piece.link
         self._sources = {
-            source.name: SourceData(piece, source, is_summary)
+            source.name: SourceData(piece, source)
             for source in piece.sources
         }
         self._comments = self.make_default(True)
@@ -119,13 +118,22 @@ class PieceData:
         """Get the source by the given name, or None."""
         return self._sources.get(name, None)
 
-    def to_json(self):
-        """Return a JSON representation of this piece data."""
+    def to_json(self, has_summary=False):
+        """Return a JSON representation of this piece data.
+
+        Args:
+            has_summary (bool): Whether the source data should include
+                a "summary" volunteer.
+                Default is False.
+
+        Returns:
+            Dict: A JSON dict.
+        """
         return {
             'title': self._name,
             'link': self._link,
             'sources': [
-                source.to_json()
+                source.to_json(has_summary)
                 for source in self._sources.values()
             ],
             'comments': self._comments,
@@ -154,15 +162,21 @@ class PieceData:
 
         return values
 
-    def with_defaults(self, values, loc, is_comments=False):
+    def with_defaults(self,
+                      values,
+                      loc,
+                      exclude_notes=False,
+                      is_comments=False
+                      ):
         """Fix a JSON dict by adding the default values.
         Displays warnings for missing or extra fields.
 
         Args:
             values (Dict): The raw values.
             loc (str): The location, for warning messages.
+            exclude_notes (bool): Whether to exclude the "notes" field.
+                Default is False.
             is_comments (bool): Whether this dict is for "comments".
-                Excludes the "notes" field.
                 Default is False.
 
         Returns:
@@ -170,9 +184,9 @@ class PieceData:
                 and the fixed dict.
         """
 
-        fixed = self.make_default()
-        if is_comments:
-            fixed.pop('notes')
+        fixed = self.make_default(is_comments)
+        if exclude_notes:
+            fixed.pop('notes', None)
 
         extra_bars = []
         missing_bars = {}

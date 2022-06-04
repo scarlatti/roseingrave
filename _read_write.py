@@ -804,12 +804,12 @@ def read_volunteer_data(pieces, fmt_path=None, strict=False):
 
                 sources[name] = {
                     'name': name,
-                    'link': raw_source['link'],
+                    'link': s_link,
                     **source,
                 }
 
             warning, comments = piece_obj.with_defaults(
-                raw_piece['comments'], p_loc, True
+                raw_piece['comments'], p_loc, exclude_notes=True
             )
             if strict and warning:
                 return ERROR_RETURN
@@ -871,13 +871,18 @@ def write_volunteer_data(data, fmt_path=None):
 # ======================================================================
 
 
-def read_piece_data(fmt_path=None):
+def read_piece_data(pieces, fmt_path=None, strict=False):
     """Read piece data from files.
 
     Args:
+        pieces (Dict[str, PieceData]): A mapping from piece names to
+            piece data.
         fmt_path (Optional[str]): A format path for piece data to use
             instead.
             Default is None (use the settings file).
+        strict (bool): Whether to fail on warnings instead of only
+            displaying them.
+            Default is False.
 
     Returns:
         Tuple[bool, Dict[str, Dict]]: Whether the read was successful,
@@ -885,12 +890,12 @@ def read_piece_data(fmt_path=None):
     """
     ERROR_RETURN = False, None
 
-    def _error(msg):
-        return error(msg, ERROR_RETURN)
+    def _error(msg, *args, **kwargs):
+        return error(msg.format(*args, **kwargs), ERROR_RETURN)
 
     success = _read_settings()
     if not success:
-        return False
+        return ERROR_RETURN
 
     # validate args
     try:
@@ -905,11 +910,163 @@ def read_piece_data(fmt_path=None):
 
     logger.info('Reading piece data from files: {}', path)
 
-    success, pieces = _read_format_files(path, '{piece}')
+    success, raw_data = _read_format_files(path, '{piece}')
     if not success:
         return ERROR_RETURN
 
-    return True, pieces
+    # validate data
+    # FUTURE: can validate that certain volunteer emails show up?
+    #   i.e., all sources must have the same volunteers, and the
+    #   emails in "comments" must be a subset
+    pieces_data = {}
+    for file, raw_piece in raw_data.items():
+        missing_fields = [
+            key for key in
+            ('title', 'link', 'sources', 'comments')
+            if key not in raw_piece
+        ]
+        if len(missing_fields) > 0:
+            return _error(
+                'Missing fields {} for piece file "{}"',
+                ','.join(f'"{key}"' for key in missing_fields),
+                file
+            )
+
+        title = raw_piece['title']
+        p_link = raw_piece['link']
+
+        if file != title:
+            msg = (
+                f'Piece name "{title}" doesn\'t match file arg "{file}"'
+            )
+            if strict:
+                logger.warning(msg)
+                fail_on_warning()
+                return ERROR_RETURN
+            logger.warning('{}. Using "{}" for piece.', msg, title)
+
+        if title not in pieces:
+            logger.warning(
+                'Unknown piece "{}" (not in piece definitions file)',
+                title
+            )
+            if strict:
+                fail_on_warning()
+                return ERROR_RETURN
+            continue
+        piece_obj = pieces[title]
+
+        if title in pieces_data:
+            logger.warning('Repeated piece "{}"', title)
+            if strict:
+                fail_on_warning()
+                return ERROR_RETURN
+            continue
+
+        p_loc = f'piece "{title}"'
+
+        if piece_obj.link is None:
+            if p_link is not None:
+                logger.warning(
+                    'Extra piece link "{}" for {}',
+                    p_link, p_loc
+                )
+                if strict:
+                    fail_on_warning()
+                    return ERROR_RETURN
+        else:
+            if p_link is None:
+                logger.warning('Missing piece link for {}', p_loc)
+                if strict:
+                    fail_on_warning()
+                    return ERROR_RETURN
+            elif p_link != piece_obj.link:
+                logger.warning(
+                    'Incorrect piece link "{}" for {}',
+                    p_link, p_loc
+                )
+                if strict:
+                    fail_on_warning()
+                    return ERROR_RETURN
+
+        sources = {}
+        for i, raw_source in enumerate(raw_piece['sources']):
+            missing_fields = [
+                key for key in ('name', 'link', 'volunteers')
+                if key not in raw_source
+            ]
+            if len(missing_fields) > 0:
+                return _error(
+                    'Missing fields {} for {}, source {}',
+                    ','.join(f'"{key}"' for key in missing_fields),
+                    p_loc, i
+                )
+
+            name = raw_source['name']
+            s_link = raw_source['link']
+
+            if not piece_obj.has_source(name):
+                logger.warning(
+                    'Unknown source "{}" for {} '
+                    '(not in piece definitions file)',
+                    name, p_loc
+                )
+                if strict:
+                    fail_on_warning()
+                    return ERROR_RETURN
+                continue
+
+            if name in sources:
+                logger.warning(
+                    'Repeated source "{}" for {}', name, p_loc
+                )
+                if strict:
+                    fail_on_warning()
+                    return ERROR_RETURN
+                continue
+
+            s_loc = f'{p_loc}, source "{name}"'
+
+            if s_link != piece_obj.get_source(name).link:
+                logger.warning(
+                    'Incorrect source link "{}" for {}',
+                    s_link, s_loc
+                )
+                if strict:
+                    fail_on_warning()
+                    return ERROR_RETURN
+
+            volunteers = {}
+            for email, volunteer in raw_source['volunteers'].items():
+                warning, fixed = piece_obj.with_defaults(
+                    volunteer, f'{s_loc}, volunteer "{email}"'
+                )
+                if strict and warning:
+                    fail_on_warning()
+                    return ERROR_RETURN
+                volunteers[email] = fixed
+
+            sources[name] = {
+                'name': name,
+                'link': s_link,
+                'volunteers': volunteers,
+            }
+
+        warning, comments = piece_obj.with_defaults(
+            raw_piece['comments'], p_loc, is_comments=True
+        )
+        if strict and warning:
+            fail_on_warning()
+            return ERROR_RETURN
+
+        pieces_data[title] = {
+            'title': title,
+            'link': p_link,
+            'sources': sources,
+            'comments': comments,
+        }
+
+    return True, pieces_data
 
 
 def write_piece_data(data, fmt_path=None):
