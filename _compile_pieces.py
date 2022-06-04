@@ -272,7 +272,7 @@ def compile_pieces(pdp, td, pd, summary_path, strict):
     if not success:
         return
 
-    success, template = read_template(td)
+    success, template = read_template(td, strict)
     if not success:
         return
 

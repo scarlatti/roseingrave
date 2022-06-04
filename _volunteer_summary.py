@@ -57,12 +57,10 @@ def export_spreadsheet(gc, email, link, template, strict):
             if success:
                 data.append(piece_data)
                 continue
-            msg = piece_data
+            if strict:
+                return ERROR_RETURN
         except Exception as ex:
-            success = False
-            msg = str(ex)
-        if not success:
-            error(f'Error when exporting "{sheet.title}" sheet: {msg}')
+            error(f'Error when exporting "{sheet.title}" sheet: {ex}')
             if strict:
                 return ERROR_RETURN
 
@@ -125,7 +123,7 @@ def volunteer_summary(emails, si, td, vdp, strict):
     # remove master spreadsheet
     spreadsheets.pop('MASTER', None)
 
-    success, template = read_template(td)
+    success, template = read_template(td, strict)
     if not success:
         return
 

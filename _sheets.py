@@ -91,8 +91,8 @@ def open_spreadsheet(gc, link):
             'PERMISSION_DENIED': (
                 f'Couldn\'t open spreadsheet "{link}" (permission '
                 'denied). Please make sure this spreadsheet is shared '
-                'with the service account with edit permissions, or '
-                'remove it from the spreadsheets index file.'
+                'with the you, or remove it from the spreadsheets '
+                'index file.'
             ),
         },
         404: {
@@ -140,9 +140,9 @@ def add_temp_sheet(spreadsheet, invalid=None):
         403: {
             'PERMISSION_DENIED': (
                 f'Couldn\'t edit spreadsheet "{spreadsheet.url}". '
-                'Please make sure this spreadsheet is shared with the '
-                'service account with edit permissions, or remove it '
-                'from the spreadsheets index file.'
+                'Please make sure this spreadsheet is shared with you '
+                'with edit permissions, or remove it from the '
+                'spreadsheets index file.'
             ),
         },
     }
