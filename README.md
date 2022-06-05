@@ -130,9 +130,9 @@ use for created spreadsheets. The default values are:
 The `"masterSpreadsheet"` and `"volunteerSpreadsheet"` values define information
 for the master and volunteer spreadsheets respectively:
 
-- `"title"`: The title of the spreadsheet, or the format of the spreadsheet for
-  `"volunteerSpreadsheet"`, with the format string `"{email}"` representing the
-  email of the volunteer.
+- `"title"`: The title of the spreadsheet, or the format of the title for
+  `"volunteerSpreadsheet"`, with the format string `"{email}"` (at most once)
+  representing the email of the volunteer.
 - `"publicAccess"`: The public access of the spreadsheet. It can either be
   `null` (restricted), `"view"`, or `"edit"`. Unknown values will default to
   `null`.

@@ -269,8 +269,7 @@ def _read_settings():
         )
         if count != 1:
             return _error(
-                'settings: "{}" must have "{}" exactly once',
-                key, search
+                '"{}" must have "{}" exactly once', key, search
             )
 
     return True
@@ -321,9 +320,16 @@ def read_template(path=None, strict=False):
             values[level][k] = level_values.get(k, default)
 
     # validate values
-    warning = False
     invalid = False
+    warning = False
 
+    # volunteer spreadsheet title must have "{email}" at most once
+    if values['volunteerSpreadsheet']['title'].count('{email}') > 1:
+        invalid = True
+        _error(
+            '"volunteerSpreadsheet"."title": '
+            'can only contain "{email}" at most once'
+        )
     # public access options
     for ss in ('masterSpreadsheet', 'volunteerSpreadsheet'):
         value = values[ss]['publicAccess']
@@ -335,6 +341,7 @@ def read_template(path=None, strict=False):
                 ss, value
             )
             values[ss]['publicAccess'] = FILES[key][ss]['publicAccess']
+    # "shareWithVolunteer" must be a boolean
     swv = values['volunteerSpreadsheet']['shareWithVolunteer']
     if swv not in (True, False):
         warning = True
