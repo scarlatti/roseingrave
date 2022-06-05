@@ -1,5 +1,5 @@
 """
-_import_master.py
+import_master.py
 Update the master spreadsheet.
 """
 

@@ -1,5 +1,5 @@
 """
-_volunteer_summary.py
+volunteer_summary.py
 Export volunteer JSON data files.
 """
 
@@ -50,14 +50,10 @@ def export_spreadsheet(gc, email, link, template):
 
     data = []
     for sheet in spreadsheet.worksheets():
-        try:
-            success, piece_data = Piece.export_sheet(sheet, template)
-            if not success:
-                return
-            data.append(piece_data)
-        except Exception as ex:
-            error(f'Error when exporting "{sheet.title}" sheet: {ex}')
+        success, piece_data = Piece.export_sheet(sheet, template)
+        if not success:
             return
+        data.append(piece_data)
 
     return True, data
 

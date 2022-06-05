@@ -1,5 +1,5 @@
 """
-_piece_summary.py
+piece_summary.py
 Export piece JSON data files.
 """
 

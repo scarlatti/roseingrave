@@ -1,5 +1,5 @@
 """
-_compile_pieces.py
+compile_pieces.py
 Compile all piece JSON data flies into a single file.
 """
 

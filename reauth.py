@@ -1,5 +1,5 @@
 """
-_reauth.py
+reauth.py
 Reauthenticate the credentials for your OAuth Client.
 """
 

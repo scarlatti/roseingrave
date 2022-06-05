@@ -7,13 +7,13 @@ The command-line interface for Roseingrave.
 
 import click
 
-from ._reauth import reauth
-from ._create_sheet import create_sheet
-from ._volunteer_summary import volunteer_summary
-from ._piece_summary import piece_summary
-from ._compile_pieces import compile_pieces
-from ._import_master import import_master
-from ._export_master import export_master
+from .reauth import reauth
+from .create_sheet import create_sheet
+from .volunteer_summary import volunteer_summary
+from .piece_summary import piece_summary
+from .compile_pieces import compile_pieces
+from .import_master import import_master
+from .export_master import export_master
 
 # ======================================================================
 
