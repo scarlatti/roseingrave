@@ -126,12 +126,11 @@ def populate_spreadsheets(gc, spreadsheets, volunteers, pieces, strict):
 
         # delete existing sheets
         existing_sheets = list(spreadsheet.worksheets())
-        invalid_temp_names = (
+        invalid_names = (
             set(volunteer.pieces) |
             set(sheet.title for sheet in existing_sheets)
         )
-        success, temp_sheet = \
-            add_temp_sheet(spreadsheet, invalid_temp_names)
+        success, temp_sheet = add_temp_sheet(spreadsheet, invalid_names)
         if not success:
             if strict:
                 fail_on_warning()
@@ -266,7 +265,11 @@ def create_sheet(emails, replace, new, td, pd, vd, si, strict):
         # if `replace` is false, don't edit existing spreadsheets
         if not replace:
             for email in already_exist:
-                logger.debug('Volunteer "{}" being skipped', email)
+                logger.debug(
+                    'Volunteer "{}" being skipped '
+                    '(already in spreadsheets index file)',
+                    email
+                )
                 volunteers.pop(email)
 
     if len(volunteers) == 0:

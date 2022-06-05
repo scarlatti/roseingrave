@@ -27,7 +27,7 @@ __all__ = ('import_master',)
 
 # ======================================================================
 
-SPREADSHEET_KEY = 'MASTER'
+MASTER_KEY = 'MASTER'
 
 # ======================================================================
 
@@ -47,12 +47,11 @@ def _create_piece_sheets(spreadsheet, pieces, summary):
 
     # delete existing sheets
     existing_sheets = list(spreadsheet.worksheets())
-    invalid_temp_names = (
+    invalid_names = (
         set(summary.keys()) |
         set(sheet.title for sheet in existing_sheets)
     )
-    success, temp_sheet = \
-        add_temp_sheet(spreadsheet, invalid_temp_names)
+    success, temp_sheet = add_temp_sheet(spreadsheet, invalid_names)
     if not success:
         return False
     for sheet in existing_sheets:
@@ -141,7 +140,7 @@ def import_master(create, td, pd, summary_path, si, strict):
         return
 
     # check if need to create spreadsheet
-    if SPREADSHEET_KEY not in spreadsheets:
+    if MASTER_KEY not in spreadsheets:
         create = True
 
     # create or open spreadsheet
@@ -161,9 +160,9 @@ def import_master(create, td, pd, summary_path, si, strict):
             return
 
         # save link
-        spreadsheets[SPREADSHEET_KEY] = spreadsheet.url
+        spreadsheets[MASTER_KEY] = spreadsheet.url
     else:
-        link = spreadsheets[SPREADSHEET_KEY]
+        link = spreadsheets[MASTER_KEY]
         success, spreadsheet = open_spreadsheet(gc, link)
         if not success:
             return

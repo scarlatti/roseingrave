@@ -27,7 +27,7 @@ __all__ = ('volunteer_summary',)
 # ======================================================================
 
 
-def export_spreadsheet(gc, email, link, template, strict):
+def export_spreadsheet(gc, email, link, template):
     """Export a volunteer's spreadsheet.
 
     Args:
@@ -35,8 +35,6 @@ def export_spreadsheet(gc, email, link, template, strict):
         email (str): The volunteer email.
         link (str): The spreadsheet link.
         template (Dict): The template settings.
-        strict (bool): Whether to fail on warnings instead of only
-            displaying them.
 
     Returns:
         Tuple[bool, List[Dict]]: Whether the export was successful,
@@ -54,15 +52,12 @@ def export_spreadsheet(gc, email, link, template, strict):
     for sheet in spreadsheet.worksheets():
         try:
             success, piece_data = Piece.export_sheet(sheet, template)
-            if success:
-                data.append(piece_data)
-                continue
-            if strict:
-                return ERROR_RETURN
+            if not success:
+                return
+            data.append(piece_data)
         except Exception as ex:
             error(f'Error when exporting "{sheet.title}" sheet: {ex}')
-            if strict:
-                return ERROR_RETURN
+            return
 
     return True, data
 
@@ -151,8 +146,9 @@ def volunteer_summary(emails, si, td, vdp, strict):
     # export spreadsheets
     logger.info('Exporting data from spreadsheets')
     for email, link in spreadsheets.items():
-        success, volunteer_data = \
-            export_spreadsheet(gc, email, link, template, strict)
+        success, volunteer_data = export_spreadsheet(
+            gc, email, link, template
+        )
         if strict and not success:
             fail_on_warning()
             return

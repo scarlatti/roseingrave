@@ -19,7 +19,7 @@ __all__ = (
 
 def fail_on_warning():
     """Display an error to fix all warnings."""
-    logger.error('Please fix all warnings and try again.')
+    logger.error('Please fix all errors and warnings and try again.')
 
 
 def error(msg, return_value=None):
