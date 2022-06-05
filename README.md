@@ -370,6 +370,29 @@ be skipped. Unknown or missing fields will raise warnings.
 - `-s`: A filepath to replace `"summary"`.
 - `--strict` (flag): Fail on warnings instead of only displaying them.
 
+### `import_master`
+
+Update the master spreadsheet, or create it if it doesn't exist.
+
+Note that this will wipe all current content in the existing spreadsheet. To
+keep the original spreadsheet, use the `-c` flag, remove the link from
+`"spreadsheetsIndex"`, or make a copy first.
+
+For most accurate sheet, run the `compile_pieces` or `export_master` command
+first.
+
+Requires `"spreadsheetsIndex"`, `"template"`, and `"summary"`. If created,
+outputs the spreadsheet link to `"spreadsheetsIndex"`.
+
+#### Options
+
+- `-c`/`--create`: Create a new master spreadsheet.
+- `-td`: A filepath to replace `"template"`.
+- `-pd`: A filepath to replace `"pieces"`.
+- `-s`: A filepath to replace `"summary"`.
+- `-si`: A filepath to replace `"spreadsheetsIndex"`.
+- `--strict` (flag): Fail on warnings instead of only displaying them.
+
 <!-- TODO: below -->
 
 <!--

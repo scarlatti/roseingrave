@@ -20,6 +20,8 @@ __all__ = (
     'gspread_auth',
     'open_spreadsheet',
     'add_temp_sheet',
+    'share_spreadsheet', 'share_public',
+    'add_permissions',
 )
 
 # ======================================================================
@@ -172,3 +174,151 @@ def add_temp_sheet(spreadsheet, invalid=None):
 
         # re-raise
         raise
+
+# ======================================================================
+
+
+def _access_to_role(access, default):
+    access = access.strip().lower()
+    role = default
+    if access == 'view':
+        role = 'reader'
+    elif access == 'edit':
+        role = 'writer'
+    return role
+
+
+def _share(spreadsheet, email, *args, **kwargs):
+    """Share a spreadsheet. Return True if successful."""
+    ERRORS = {
+        400: {
+            'invalid': (
+                f'Invalid email "{email}"'
+            ),
+            'invalidSharingRequest': (
+                # only happens if notify=False
+                f'Invalid email "{email}": '
+                'No Google account associated with this email address.'
+            ),
+        },
+        403: {
+            'forbidden': (
+                'Insufficient permissions to share spreadsheet '
+                f'"{spreadsheet.title}".'
+            )
+        },
+    }
+
+    try:
+        spreadsheet.share(email, *args, **kwargs)
+        return True
+    except gspread.exceptions.APIError as ex:
+        args = ex.args[0]
+
+        code = args['code']
+        if code in ERRORS:
+            for err in args['errors']:
+                reason = err['reason']
+                if reason in ERRORS[code]:
+                    error(ERRORS[code][reason])
+                    return False
+
+        # re-raise
+        raise
+
+
+def share_spreadsheet(spreadsheet,
+                      email,
+                      access='view',
+                      notify=False,
+                      msg=None
+                      ):
+    """Share a spreadsheet with an email address.
+
+    Args:
+        spreadsheet (gspread.Spreadsheet): The spreadsheet.
+        email (str): The email address.
+        access (str): The access level.
+            Options are "view" and "edit".
+            Default is "view".
+        notify (bool): Whether to notify the person.
+            Default is False.
+        msg (str): A message to send with the share notification.
+            Default is None.
+
+    Returns:
+        bool: Whether the share was successful.
+    """
+
+    role = _access_to_role(access, 'reader')
+
+    success = _share(
+        spreadsheet,
+        email,
+        perm_type='user',
+        role=role,
+        notify=notify,
+        email_message=msg
+    )
+    return success
+
+
+def share_public(spreadsheet, access=None):
+    """Share a spreadsheet publicly.
+    Assumes the spreadsheet is not currently shared publicly.
+    (That is, cannot restrict spreadsheet access; can only share.)
+
+    Args:
+        spreadsheet (gspread.Spreadsheet): The spreadsheet.
+        access (Optional[str]): The access level.
+            Choices are None, "view", and "edit".
+            Default is None.
+
+    Returns:
+        bool: Whether the share was successful.
+    """
+
+    if access is None:
+        return True
+
+    role = _access_to_role(access, None)
+
+    # don't share
+    if role is None:
+        return True
+
+    success = _share(spreadsheet, None, perm_type='anyone', role=role)
+    return success
+
+
+def add_permissions(spreadsheet, public_access=None, share_with=None):
+    """Add permissions to spreadsheet.
+
+    Args:
+        spreadsheet (gspread.Spreadsheet): The spreadsheet.
+        public_access (Optional[str]): The public access level.
+            Options are None, "view", and "edit".
+            Default is None.
+        share_with (List[str]): Email addresses to give edit access to.
+            Default is None.
+
+    Returns:
+        bool: Whether the shares are successful.
+    """
+    if share_with is None:
+        share_with = []
+
+    try:
+        success = share_public(spreadsheet, public_access)
+        if not success:
+            return False
+
+        for email in share_with:
+            success = share_spreadsheet(spreadsheet, email, 'edit')
+            if not success:
+                return False
+    except Exception as ex:
+        error(ex)
+        return False
+
+    return True

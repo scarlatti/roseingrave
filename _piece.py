@@ -249,10 +249,8 @@ class Piece:
             [self._template['commentFields']['notes']]
         ]
 
-        # update values with proper bar count
-        bar_count = self._bar_count
-        if bar_count is None:
-            bar_count = self._template['values']['defaultBarCount']
+        # proper bar count
+        bar_count = self.final_bar_count
         bars_section = [[i + 1] for i in range(bar_count)]
 
         values = row1 + self._values[0] + bars_section + self._values[1]
@@ -268,6 +266,118 @@ class Piece:
         _format_sheet(
             spreadsheet, sheet.id, self._template,
             notes_col, blank_row1, blank_row2, comments_row
+        )
+
+        return sheet
+
+    def create_master_sheet(self, spreadsheet, piece_data):
+        """Create a sheet for the master spreadsheet.
+
+        Args:
+            spreadsheet (gspread.Spreadsheet): The master spreadsheet.
+            piece_data (Dict): The data for the piece.
+
+        Returns:
+            gspread.Worksheet: The created sheet.
+        """
+
+        # add sheet
+        sheet = spreadsheet.add_worksheet(self._name, 1, 1)
+
+        bar_count = self.final_bar_count
+
+        # finish headers
+        values = [
+            [_hyperlink(self._name, self._link)],
+            ['Volunteer'],
+            *self._values[0],
+            *[[i + 1] for i in range(bar_count)],
+            *self._values[1],
+        ]
+
+        headers = tuple(self._template['metaDataFields'].keys())
+
+        headers_start = 2
+
+        headers_iter = [
+            (headers_start + i, header)
+            for i, header in enumerate(headers)
+        ]
+
+        blank_row1 = 2 + len(headers) + 1  # 2 rows + headers
+        blank_row2 = blank_row1 + bar_count + 1
+        comments_row = blank_row2 + 1
+
+        bars_start = blank_row1 + 1
+        bars_iter = [
+            (bars_start + i, str(i + 1))
+            for i in range(bar_count)
+        ]
+
+        # go through sources and add
+        sources = piece_data['sources']
+        # list of starting col number for each source (1-indexed)
+        source_cols = []
+        col = 2
+        for name, source in self._sources.items():
+            source_data = sources[name]
+            source_cols.append(col)
+
+            def add_column(email, volunteer):
+                # row 1
+                values[0].append('')
+                # row 2
+                values[1].append(email)
+                # headers
+                for r, header in headers_iter:
+                    values[r].append(volunteer[header])
+                # bars
+                bars = volunteer['bars']
+                for r, bar_num in bars_iter:
+                    values[r].append(bars[bar_num])
+                # comments
+                values[comments_row - 1].append(volunteer['comments'])
+
+            start_col = col - 1
+
+            # volunteers
+            for email, volunteer in source_data['volunteers'].items():
+                add_column(email, volunteer)
+                col += 1
+            # summary
+            add_column(
+                self._template['commentFields']['summary'],
+                source_data['summary']
+            )
+            col += 1
+
+            # put the source hyperlink
+            values[0][start_col] = source.hyperlink()
+
+        # notes column
+        notes_col = col
+
+        def note_str(notes):
+            return '\n'.join(
+                f'{email}: {note}'
+                for email, note in notes.items()
+            )
+
+        values[0].append(self._template['commentFields']['notes'])
+        notes = piece_data['notes']
+        for r, header in headers_iter:
+            values[r].append(note_str(notes[header]))
+        bars = notes['bars']
+        for r, bar_num in bars_iter:
+            values[r].append(note_str(bars[bar_num]))
+
+        # put the values
+        sheet.update(values, raw=False)
+
+        _format_sheet(
+            spreadsheet, sheet.id, self._template,
+            notes_col, blank_row1, blank_row2, comments_row,
+            is_master=True, source_cols=source_cols
         )
 
         return sheet
@@ -306,7 +416,7 @@ class Piece:
         for col in range(1, len(row1) - 1):
             link, name = _parse_hyperlink(values[0][col])
             if link is None:
-                col_letter = rowcol_to_a1(1, col+1)[:-1]
+                col_letter = rowcol_to_a1(1, col+1)[: -1]
                 error(
                     f'sheet "{sheet.title}": column {col_letter} '
                     'doesn\'t have a valid hyperlink'
@@ -349,7 +459,9 @@ class Piece:
 
 
 def _format_sheet(spreadsheet, sheet_id, template,
-                  notes_col, blank_row1, blank_row2, comments_row):
+                  notes_col, blank_row1, blank_row2, comments_row,
+                  is_master=False, source_cols=None
+                  ):
     """Format a piece sheet."""
 
     def hex_to_rgb(hex_color):
@@ -363,6 +475,15 @@ def _format_sheet(spreadsheet, sheet_id, template,
         }
 
     BLACK = hex_to_rgb('000000')
+
+    header_end = 2 if is_master else 1
+
+    if source_cols is None:
+        source_cols = []
+    source_col_strs = [
+        rowcol_to_a1(1, col)[:-1]
+        for col in source_cols
+    ]
 
     requests = []
 
@@ -412,7 +533,7 @@ def _format_sheet(spreadsheet, sheet_id, template,
             'userEnteredFormat.verticalAlignment',
         ))
     }
-    source_end_column = rowcol_to_a1(1, notes_col - 1)
+    source_end_column = rowcol_to_a1(header_end, notes_col - 1)
     notes_column = rowcol_to_a1(1, notes_col)[:-1]
     range_formats = (
         # piece name
@@ -428,6 +549,20 @@ def _format_sheet(spreadsheet, sheet_id, template,
         # comments row
         (f'B{comments_row}:{comments_row}', wrapped_top_align),
     )
+    if is_master:
+        # make all email cells be left-aligned
+        left_align = {
+            'cell': {
+                'userEnteredFormat': {
+                    'horizontalAlignment': 'LEFT',
+                },
+            },
+            'fields': 'userEnteredFormat.horizontalAlignment',
+        }
+        range_formats += tuple(
+            (f'{col_str}2', left_align)
+            for col_str in source_col_strs
+        )
     for range_name, fmt in range_formats:
         requests.append({
             'repeatCell': {
@@ -436,18 +571,47 @@ def _format_sheet(spreadsheet, sheet_id, template,
             }
         })
 
+    # borders
     range_borders = []
 
-    # borders around empty rows
-    # double border after the first row
-    # double_border = {
-    #     'style': 'DOUBLE',
-    #     'color': BLACK,
-    # }
-    # range_borders += [
-    #     ('1:1', {'bottom': double_border}),
-    # ]
+    if is_master:
+        double_border = {
+            'style': 'DOUBLE',
+            'color': BLACK,
+        }
 
+        # double border after the header rows
+        range_borders += [
+            (f'{header_end}:{header_end}', {'bottom': double_border}),
+        ]
+
+        source_cols.append(notes_col)
+
+        # double border before every source column
+        left_double_border = {'left': double_border}
+        range_borders += [
+            (f'{col_str}:{col_str}', left_double_border)
+            for col_str in source_col_strs
+        ]
+
+        # merge source columns
+        for i in range(len(source_cols) - 1):
+            requests.append({
+                'mergeCells': {
+                    'range': {
+                        'sheetId': sheet_id,
+                        # row 1
+                        'startRowIndex': 0,
+                        'endRowIndex': 1,
+                        # between each source col (0-indexed)
+                        'startColumnIndex': source_cols[i] - 1,
+                        'endColumnIndex': source_cols[i + 1] - 1,
+                    },
+                    'mergeType': 'MERGE_ALL',
+                }
+            })
+
+    # borders around empty rows
     solid_black = {
         'style': 'SOLID',
         'color': BLACK,
@@ -482,24 +646,13 @@ def _format_sheet(spreadsheet, sheet_id, template,
             }
         })
 
-    # double border on the right of every column
-    # for column in range(1, 1 + len(self._sources)):
-    #     requests.append({
-    #         'updateBorders': {
-    #             'range': {
-    #                 'sheetId': sheet_id,
-    #                 'startColumnIndex': column,
-    #                 'endColumnIndex': column + 1,
-    #             },
-    #             'right': double_border,
-    #         }
-    #     })
-
     column_widths = (
         # column 1: width 200
         ({'startIndex': 0, 'endIndex': 1}, 200),
         # all other columns: width 150
-        ({'startIndex': 1}, 150),
+        ({'startIndex': 1, 'endIndex': notes_col - 1}, 150),
+        # notes col: width 300
+        ({'startIndex': notes_col - 1, 'endIndex': notes_col}, 300),
     )
     for pos, width in column_widths:
         requests.append({
@@ -538,7 +691,7 @@ def _format_sheet(spreadsheet, sheet_id, template,
             'properties': {
                 'sheetId': sheet_id,
                 'gridProperties': {
-                    'frozenRowCount': 1,
+                    'frozenRowCount': header_end,
                     'frozenColumnCount': 1,
                 },
             },

@@ -12,6 +12,7 @@ from ._create_sheet import create_sheet
 from ._volunteer_summary import volunteer_summary
 from ._piece_summary import piece_summary
 from ._compile_pieces import compile_pieces
+from ._import_master import import_master
 
 # ======================================================================
 
@@ -38,7 +39,7 @@ cli = OrderedGroup(
         volunteer_summary,
         piece_summary,
         compile_pieces,
-        # import_master,
+        import_master,
         # export_master,
     ],
     help='Massively scalable musical source comparator'

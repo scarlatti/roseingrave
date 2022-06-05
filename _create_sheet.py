@@ -6,10 +6,9 @@ Create a volunteer spreadsheet.
 # ======================================================================
 
 import click
-import gspread.exceptions
 from loguru import logger
 
-from ._shared import fail_on_warning, error
+from ._shared import fail_on_warning
 from ._read_write import (
     read_template,
     read_piece_definitions,
@@ -20,6 +19,8 @@ from ._sheets import (
     gspread_auth,
     open_spreadsheet,
     add_temp_sheet,
+    share_spreadsheet,
+    add_permissions,
 )
 
 # ======================================================================
@@ -28,83 +29,6 @@ __all__ = ('create_sheet',)
 
 # ======================================================================
 
-
-def share(spreadsheet,
-          email,
-          role='reader',
-          notify=False,
-          msg=None
-          ):
-    """Share a spreadsheet with an email address.
-
-    Args:
-        spreadsheet (gspread.Spreadsheet): The spreadsheet.
-        email (str): The email address.
-        role (str): The role.
-            Options are 'owner', 'writer', 'reader'.
-            Default is 'reader'.
-        notify (bool): Whether to notify the person.
-            Default is False.
-        msg (str): A message to send with the share notification.
-            Default is None.
-
-    Returns:
-        bool: Whether the share was successful.
-    """
-
-    ERRORS = {
-        400: {
-            'invalid': (
-                f'Invalid email "{email}"'
-            ),
-            'ownershipChangeAcrossDomainNotPermitted': (
-                f'Invalid email "{email}": '
-                'Ownership can only be transferred to another user '
-                'in the same organization as the current owner.'
-            ),
-            'invalidSharingRequest': (
-                f'Invalid email "{email}": '
-                'No Google account associated with this email '
-                'address.'
-            ),
-        },
-        403: {
-            'consentRequiredForOwnershipTransfer': (
-                'Consent is required to transfer ownership of a '
-                'file to another user.'
-            ),
-        },
-    }
-
-    role = role.strip().lower()
-    if role not in ('owner', 'writer'):
-        role = 'reader'
-
-    try:
-        spreadsheet.share(
-            email,
-            perm_type='user',
-            role=role,
-            notify=notify,
-            email_message=msg
-        )
-        return True
-    except gspread.exceptions.APIError as ex:
-        args = ex.args[0]
-
-        code = args['code']
-        if code in ERRORS:
-            for err in args['errors']:
-                reason = err['reason']
-                if reason in ERRORS[code]:
-                    error(ERRORS[code][reason])
-                    return False
-
-        # re-raise
-        raise
-
-
-# ======================================================================
 
 def create_spreadsheets(gc, spreadsheets, template, emails):
     """Create spreadsheets for the given volunteers.
@@ -140,36 +64,27 @@ def create_spreadsheets(gc, spreadsheets, template, emails):
         spreadsheet = gc.create(title_fmt.format(email=email))
         created.append(spreadsheet.id)
 
-        try:
-            if share_with_volunteer:
-                # make volunteer an editor
-                msg = (
-                    'This is an invitation for you to collaborate on a '
-                    'crowd-sourcing spreadsheet for a project run by '
-                    'Roseingrave. Thank you for accepting our '
-                    'invitation as a volunteer.'
-                )
-                success = share(spreadsheet, email, 'writer', True, msg)
-                if not success:
-                    delete_created()
-                    return False
-
-            for share_email in share_with:
-                success = share(spreadsheet, share_email, 'writer')
-                if not success:
-                    delete_created()
-                    return False
-        except:
+        success = add_permissions(
+            spreadsheet, public_access, share_with
+        )
+        if not success:
             delete_created()
-            raise
+            return False
 
-        role = None
-        if public_access == 'view':
-            role = 'reader'
-        elif public_access == 'edit':
-            role = 'writer'
-        if role is not None:
-            spreadsheet.share(None, perm_type='anyone', role=role)
+        if share_with_volunteer:
+            # make volunteer an editor
+            msg = (
+                'This is an invitation for you to collaborate on a '
+                'crowd-sourcing spreadsheet for a project run by '
+                'Roseingrave. Thank you for accepting our invitation '
+                'as a volunteer.'
+            )
+            success = share_spreadsheet(
+                spreadsheet, email, 'edit', notify=True, msg=msg
+            )
+            if not success:
+                delete_created()
+                return False
 
         spreadsheets[email] = spreadsheet.url
 
@@ -323,6 +238,9 @@ def create_sheet(emails, replace, new, td, pd, vd, si, strict):
         # filter volunteers in `emails`
         filtered = {}
         for email in emails:
+            # don't allow this to update the master spreadsheet
+            if email == 'MASTER':
+                continue
             if email not in volunteers:
                 logger.warning(
                     'Volunteer "{}" not found in volunteer definitions '

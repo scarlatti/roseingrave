@@ -26,7 +26,7 @@ __all__ = (
     'read_spreadsheets_index', 'write_spreadsheets_index',
     'read_volunteer_data', 'write_volunteer_data',
     'read_piece_data', 'write_piece_data',
-    'write_summary',
+    'read_summary', 'write_summary',
 )
 
 # ======================================================================
@@ -370,9 +370,13 @@ def read_template(path=None, strict=False):
 # ======================================================================
 
 
-def read_piece_definitions(template, path=None, as_data=False):
+def read_piece_definitions(template,
+                           path=None,
+                           as_data=False,
+                           as_both=False
+                           ):
     """Read the piece definitions file.
-    Repeated pieces will be combined.
+    Repeated pieces and sources will be combined.
 
     Args:
         template (Dict): The template settings.
@@ -380,6 +384,11 @@ def read_piece_definitions(template, path=None, as_data=False):
             use instead.
             Default is None (use the settings file).
         as_data (bool): Whether to return the piece objects as data.
+            Default is False.
+        as_both (bool): Whether to return the piece objects as both
+            regular objects and as data.
+            If True, returns a tuple of piece objects and piece data in
+            place of the mapping.
             Default is False.
 
     Returns:
@@ -424,11 +433,14 @@ def read_piece_definitions(template, path=None, as_data=False):
     if invalid:
         return ERROR_RETURN
 
-    if as_data:
-        pieces = {
+    if as_both or as_data:
+        pieces_data = {
             title: PieceData(piece)
             for title, piece in pieces.items()
         }
+        if as_both:
+            return True, (pieces, pieces_data)
+        pieces = pieces_data
 
     return True, pieces
 
@@ -663,7 +675,8 @@ def _validate_source(piece,
                      raw_source,
                      p_loc,
                      strict,
-                     has_volunteers=False
+                     has_volunteers=False,
+                     has_summary=False
                      ):
     """Validate a source from an input file.
     Adds the fixed source to `sources`.
@@ -681,6 +694,10 @@ def _validate_source(piece,
             If False, `raw_source` is expected to have all required
             column fields.
             Default is False.
+        has_summary (bool): Whether the raw source has summary
+            information.
+            If True, `raw_source` is expected to have a "summary" field.
+            Default is False.
 
     Returns:
         bool: Whether there was an error.
@@ -695,6 +712,8 @@ def _validate_source(piece,
     fields = ('name', 'link')
     if has_volunteers:
         fields += ('volunteers',)
+    if has_summary:
+        fields += ('summary',)
     missing_fields = [
         key for key in fields
         if key not in raw_source
@@ -754,6 +773,15 @@ def _validate_source(piece,
             return ERROR_RETURN
         adding = source
 
+    if has_summary:
+        warning, summary = piece.with_defaults(
+            raw_source['summary'], s_loc
+        )
+        if strict and warning:
+            fail_on_warning()
+            return ERROR_RETURN
+        adding['summary'] = summary
+
     sources[name] = {
         'name': name,
         'link': s_link,
@@ -766,10 +794,12 @@ def _validate_source(piece,
 def _validate_piece(pieces,
                     fixed_pieces,
                     v_loc,
-                    p_err_loc,
                     raw_piece,
                     strict,
-                    from_piece_file=False
+                    index=None,
+                    from_piece_file=False,
+                    file=None,
+                    has_summary=False
                     ):
     """Validate a piece from an input file.
     Adds the fixed piece to `fixed_pieces`.
@@ -780,13 +810,17 @@ def _validate_piece(pieces,
         v_loc (Optional[str]): The location of this piece's volunteer,
             for error messages.
             If None, volunteer location is not included in messages.
-        p_err_loc (str): The location of this piece, for error messages.
         raw_piece (Dict): The piece JSON dict.
         strict (bool): Whether to fail on warnings instead of only
             displaying them.
+        index (Optional[str[]): The index of this piece.
+            Default is None.
         from_piece_file (bool): Whether the input is from a piece file.
-            If True, treats `p_err_loc` as the file arg.
-            If False, treats `p_err_loc` as the index of the piece.
+            Default is False.
+        file (Optional[str]): The name of the file the input came from.
+            Default is None.
+        has_summary (bool): Whether the sources have summary
+            information.
             Default is False.
 
     Returns:
@@ -799,18 +833,19 @@ def _validate_piece(pieces,
     def _error(msg, *args, **kwargs):
         return error(msg.format(*args, **kwargs), ERROR_RETURN)
 
-    file = p_err_loc
-    index = p_err_loc
-
     missing_fields = [
         key for key in ('title', 'link', 'sources', 'notes')
         if key not in raw_piece
     ]
     if len(missing_fields) > 0:
-        if v_loc is None:
+        if from_piece_file and file is not None:
             loc = f'piece file "{file}"'
+        elif index is not None:
+            loc = f'piece {index}'
+            if v_loc is not None:
+                loc = f'{v_loc}, {loc}'
         else:
-            loc = f'{v_loc}, piece {index}'
+            loc = 'piece (location unknown)'
         return _error(
             'Missing fields {} for {}',
             ','.join(f'"{key}"' for key in missing_fields), loc
@@ -819,7 +854,7 @@ def _validate_piece(pieces,
     title = raw_piece['title']
     p_link = raw_piece['link']
 
-    if from_piece_file and file != title:
+    if from_piece_file and file is not None and file != title:
         msg = f'Piece name "{title}" doesn\'t match file arg "{file}"'
         if strict:
             logger.warning(msg)
@@ -879,10 +914,19 @@ def _validate_piece(pieces,
     for i, raw_source in enumerate(raw_piece['sources']):
         had_error = _validate_source(
             piece_obj, sources, i, raw_source, p_loc, strict,
-            has_volunteers=from_piece_file
+            has_volunteers=from_piece_file, has_summary=has_summary
         )
         if had_error:
             return ERROR_RETURN
+    missing_sources = [
+        name for name in piece_obj.all_sources()
+        if name not in sources
+    ]
+    if len(missing_sources) > 0:
+        return _error(
+            'Missing sources {} for {}',
+            ','.join(f'"{name}"' for name in missing_sources), p_loc
+        )
 
     warning, notes = piece_obj.with_defaults(
         raw_piece['notes'], p_loc,
@@ -958,7 +1002,7 @@ def read_volunteer_data(pieces, fmt_path=None, strict=False):
         fixed_pieces = {}
         for i, raw_piece in enumerate(volunteer_pieces):
             had_error = _validate_piece(
-                pieces, fixed_pieces, v_loc, i, raw_piece, strict
+                pieces, fixed_pieces, v_loc, raw_piece, strict, i
             )
             if had_error:
                 return ERROR_RETURN
@@ -1062,8 +1106,8 @@ def read_piece_data(pieces, fmt_path=None, strict=False):
     pieces_data = {}
     for file, raw_piece in raw_data.items():
         had_error = _validate_piece(
-            pieces, pieces_data, None, file, raw_piece, strict,
-            from_piece_file=True
+            pieces, pieces_data, None, raw_piece, strict,
+            from_piece_file=True, file=file
         )
         if had_error:
             return ERROR_RETURN
@@ -1114,6 +1158,54 @@ def write_piece_data(data, fmt_path=None):
     return True
 
 # ======================================================================
+
+
+def read_summary(pieces, path=None, strict=False):
+    """Read from the summary file.
+    Validates the data in the file.
+
+    Args:
+        pieces (Dict[str, PieceData]): A mapping from piece names to
+            piece data.
+        path (Optional[str]): A path to the summary file to use instead.
+            Default is None (use the settings file).
+        strict (bool): Whether to fail on warnings instead of only
+            displaying them.
+            Default is False.
+
+    Returns:
+        Tuple[bool, Dict[str, Dict]]: Whether the read was successful,
+            and a mapping from piece names to piece summary data.
+    """
+    ERROR_RETURN = False, None
+
+    def _error(msg):
+        return error(msg, ERROR_RETURN)
+
+    success = _read_settings()
+    if not success:
+        return ERROR_RETURN
+
+    logger.info('Reading summary file')
+
+    key = 'summary'
+
+    try:
+        values = _read_json(key, path)
+    except FileNotFoundError as ex:
+        return _error(ex)
+
+    # validate data
+    summary = {}
+    for i, raw_piece in enumerate(values):
+        had_error = _validate_piece(
+            pieces, summary, None, raw_piece, strict,
+            index=i, from_piece_file=True, has_summary=True
+        )
+        if had_error:
+            return ERROR_RETURN
+
+    return True, summary
 
 
 def write_summary(summary, path=None):

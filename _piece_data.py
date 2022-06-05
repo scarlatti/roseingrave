@@ -93,7 +93,7 @@ class PieceData:
         self._name = piece.name
         self._link = piece.link
         self._sources = {
-            source.name: SourceData(piece, source)
+            source.name: SourceData(self, source)
             for source in piece.sources
         }
         self._notes = self.make_default(True)
@@ -109,6 +109,10 @@ class PieceData:
     @property
     def bar_count(self):
         return self._bar_count
+
+    def all_sources(self):
+        """Return list of all source names."""
+        return list(self._sources.keys())
 
     def has_source(self, name):
         """Check if this piece has a source with the given name."""
