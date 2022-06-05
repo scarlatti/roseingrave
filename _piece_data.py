@@ -96,7 +96,7 @@ class PieceData:
             source.name: SourceData(piece, source)
             for source in piece.sources
         }
-        self._comments = self.make_default(True)
+        self._notes = self.make_default(True)
 
     @property
     def name(self):
@@ -136,13 +136,13 @@ class PieceData:
                 source.to_json(has_summary)
                 for source in self._sources.values()
             ],
-            'comments': self._comments,
+            'notes': self._notes,
         }
 
-    def make_default(self, is_comments=False):
+    def make_default(self, is_notes=False):
         """Make a JSON dict with the default values."""
 
-        if is_comments:
+        if is_notes:
             def value():
                 return {}
         else:
@@ -156,17 +156,17 @@ class PieceData:
             str(bar_num + 1): value()
             for bar_num in range(self._bar_count)
         }
-        # notes
-        if not is_comments:
-            values['notes'] = value()
+        # comments
+        if not is_notes:
+            values['comments'] = value()
 
         return values
 
     def with_defaults(self,
                       values,
                       loc,
-                      exclude_notes=False,
-                      is_comments=False
+                      exclude_comments=False,
+                      is_notes=False
                       ):
         """Fix a JSON dict by adding the default values.
         Displays warnings for missing or extra fields.
@@ -174,9 +174,10 @@ class PieceData:
         Args:
             values (Dict): The raw values.
             loc (str): The location, for warning messages.
-            exclude_notes (bool): Whether to exclude the "notes" field.
+            exclude_comments (bool): Whether to exclude the "comments"
+                field.
                 Default is False.
-            is_comments (bool): Whether this dict is for "comments".
+            is_notes (bool): Whether this dict is for "notes".
                 Default is False.
 
         Returns:
@@ -184,9 +185,9 @@ class PieceData:
                 and the fixed dict.
         """
 
-        fixed = self.make_default(is_comments)
-        if exclude_notes:
-            fixed.pop('notes', None)
+        fixed = self.make_default(is_notes)
+        if exclude_comments:
+            fixed.pop('comments', None)
 
         extra_bars = []
         missing_bars = {}
@@ -282,18 +283,18 @@ class PieceData:
                 continue
             self._sources[name].add_volunteer(email, source)
 
-        # comments
-        comments = data['comments']
+        # notes
+        notes = data['notes']
         # special case: bars
-        for bar_num, val in comments['bars'].items():
+        for bar_num, val in notes['bars'].items():
             if val == '':
                 continue
-            self._comments['bars'][bar_num][email] = val
-        for key, val in comments.items():
+            self._notes['bars'][bar_num][email] = val
+        for key, val in notes.items():
             if key == 'bars':
                 continue
             if val == '':
                 continue
-            self._comments[key][email] = val
+            self._notes[key][email] = val
 
         return True

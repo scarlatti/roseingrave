@@ -174,8 +174,8 @@ class Piece:
         after_bars = [
             # empty row
             [],
-            # notes row
-            [template['commentFields']['notes']]
+            # comments row
+            [template['commentFields']['comments']]
         ]
 
         # before bar section, after bar section
@@ -246,7 +246,7 @@ class Piece:
         row1 = [
             [_hyperlink(self._name, self._link)] +
             [source.hyperlink() for source in self._sources.values()] +
-            [self._template['commentFields']['comments']]
+            [self._template['commentFields']['notes']]
         ]
 
         # update values with proper bar count
@@ -260,14 +260,14 @@ class Piece:
         # put the values
         sheet.update(values, raw=False)
 
-        comments_col = len(row1[0])
+        notes_col = len(row1[0])
         blank_row1 = 1 + len(self._values[0])  # row 1 + headers
         blank_row2 = blank_row1 + bar_count + 1
-        notes_row = blank_row2 + 1
+        comments_row = blank_row2 + 1
 
         _format_sheet(
             spreadsheet, sheet.id, self._template,
-            comments_col, blank_row1, blank_row2, notes_row
+            notes_col, blank_row1, blank_row2, comments_row
         )
 
         return sheet
@@ -300,7 +300,7 @@ class Piece:
 
         headers_range = (1, 1 + len(headers))
         bars_range = (1 + len(headers) + 1, len(values) - 2)
-        notes_row = len(values) - 1
+        comments_row = len(values) - 1
 
         sources = []
         for col in range(1, len(row1) - 1):
@@ -326,30 +326,30 @@ class Piece:
                 bars_values[values[row][0]] = values[row][col]
             source['bars'] = bars_values
 
-            source['notes'] = values[notes_row][col]
+            source['comments'] = values[comments_row][col]
 
             sources.append(source)
 
-        comments = {}
+        notes = {}
         for row, header in zip(range(*headers_range), headers):
-            comments[header] = values[row][-1]
-        bars_comments = {}
+            notes[header] = values[row][-1]
+        bars_notes = {}
         for row in range(*bars_range):
-            bars_comments[values[row][0]] = values[row][-1]
-        comments['bars'] = bars_comments
+            bars_notes[values[row][0]] = values[row][-1]
+        notes['bars'] = bars_notes
 
         return True, {
             'title': piece_name,
             'link': piece_link,
             'sources': sources,
-            'comments': comments,
+            'notes': notes,
         }
 
 # ======================================================================
 
 
 def _format_sheet(spreadsheet, sheet_id, template,
-                  comments_col, blank_row1, blank_row2, notes_row):
+                  notes_col, blank_row1, blank_row2, comments_row):
     """Format a piece sheet."""
 
     def hex_to_rgb(hex_color):
@@ -412,8 +412,8 @@ def _format_sheet(spreadsheet, sheet_id, template,
             'userEnteredFormat.verticalAlignment',
         ))
     }
-    source_end_column = rowcol_to_a1(1, comments_col - 1)
-    comments_column = rowcol_to_a1(1, comments_col)[:-1]
+    source_end_column = rowcol_to_a1(1, notes_col - 1)
+    notes_column = rowcol_to_a1(1, notes_col)[:-1]
     range_formats = (
         # piece name
         ('A1', bolded),
@@ -421,12 +421,12 @@ def _format_sheet(spreadsheet, sheet_id, template,
         (f'A2:A{blank_row1 - 1}', bolded),
         # sources
         (f'B1:{source_end_column}', centered_bolded),
-        # comments header
-        (f'{comments_column}1', bolded),
         # notes header
-        (f'A{notes_row}', bolded),
-        # notes row
-        (f'B{notes_row}:{notes_row}', wrapped_top_align),
+        (f'{notes_column}1', bolded),
+        # comments header
+        (f'A{comments_row}', bolded),
+        # comments row
+        (f'B{comments_row}:{comments_row}', wrapped_top_align),
     )
     for range_name, fmt in range_formats:
         requests.append({
@@ -516,18 +516,18 @@ def _format_sheet(spreadsheet, sheet_id, template,
             }
         })
 
-    # make notes row proper height
+    # make comments row proper height
     requests.append({
         'updateDimensionProperties': {
             'properties': {
-                'pixelSize': template['values']['notesRowHeight'],
+                'pixelSize': template['values']['commentsRowHeight'],
             },
             'fields': 'pixelSize',
             'range': {
                 'sheet_id': sheet_id,
                 'dimension': 'ROWS',
-                'startIndex': notes_row - 1,  # 0-indexed here
-                'endIndex': notes_row,
+                'startIndex': comments_row - 1,  # 0-indexed here
+                'endIndex': comments_row,
             },
         }
     })
@@ -558,16 +558,15 @@ def _format_sheet(spreadsheet, sheet_id, template,
             # 'footerColor': hex_to_rgb('dedede'),
         },
     }
-    # don't include last column (comments)
-    # don't include the last row (notes row)
+    # don't include last column (notes) or last row (comments)
     requests.append({
         'addBanding': {
             'bandedRange': {
                 'range': {
                     'sheetId': sheet_id,
                     'startColumnIndex': 1,
-                    'endColumnIndex': comments_col - 1,
-                    'endRowIndex': notes_row - 1,
+                    'endColumnIndex': notes_col - 1,
+                    'endRowIndex': comments_row - 1,
                 },
                 **white_gray_banding,
             },

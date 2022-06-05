@@ -88,13 +88,13 @@ FILES = {
             'otherIndications': 'Other indications',
         },
         'commentFields': {
-            'comments': 'Comments',
             'notes': 'Notes',
+            'comments': 'Comments',
             'summary': 'SUMMARY',
         },
         'values': {
             'defaultBarCount': 100,
-            'notesRowHeight': 75,
+            'commentsRowHeight': 75,
         },
     },
 }
@@ -347,10 +347,10 @@ def read_template(path=None, strict=False):
     if values['values']['defaultBarCount'] <= 0:
         invalid = True
         _error('"defaultBarCount" must be positive')
-    # notes row height must be at least 21
-    if values['values']['notesRowHeight'] < 21:
+    # comments row height must be at least 21
+    if values['values']['commentsRowHeight'] < 21:
         invalid = True
-        _error('"notesRowHeight" must be at least 21')
+        _error('"commentsRowHeight" must be at least 21')
 
     if invalid:
         return ERROR_RETURN
@@ -796,7 +796,7 @@ def _validate_piece(pieces,
     index = p_err_loc
 
     missing_fields = [
-        key for key in ('title', 'link', 'sources', 'comments')
+        key for key in ('title', 'link', 'sources', 'notes')
         if key not in raw_piece
     ]
     if len(missing_fields) > 0:
@@ -877,9 +877,9 @@ def _validate_piece(pieces,
         if had_error:
             return ERROR_RETURN
 
-    warning, comments = piece_obj.with_defaults(
-        raw_piece['comments'], p_loc,
-        exclude_notes=True, is_comments=from_piece_file
+    warning, notes = piece_obj.with_defaults(
+        raw_piece['notes'], p_loc,
+        exclude_comments=True, is_notes=from_piece_file
     )
     if strict and warning:
         fail_on_warning()
@@ -889,7 +889,7 @@ def _validate_piece(pieces,
         'title': title,
         'link': p_link,
         'sources': sources,
-        'comments': comments,
+        'notes': notes,
     }
 
     return SUCCESS_RETURN
@@ -1051,7 +1051,7 @@ def read_piece_data(pieces, fmt_path=None, strict=False):
     # validate data
     # FUTURE: can validate that certain volunteer emails show up?
     #   i.e., all sources must have the same volunteers, and the
-    #   emails in "comments" must be a subset
+    #   emails in "notes" must be a subset
     pieces_data = {}
     for file, raw_piece in raw_data.items():
         had_error = _validate_piece(

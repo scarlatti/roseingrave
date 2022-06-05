@@ -116,13 +116,13 @@ use for created spreadsheets. The default values are:
     "otherIndications": "Other indications"
   },
   "commentFields": {
-    "comments": "Comments",
     "notes": "Notes",
+    "comments": "Comments",
     "summary": "SUMMARY"
   },
   "values": {
     "defaultBarCount": 100,
-    "notesRowHeight": 75
+    "commentsRowHeight": 75
   }
 }
 ```
@@ -147,10 +147,10 @@ the rows above the bars section.
 
 Each field under `"commentFields"` has the following meaning:
 
-- `"columns"`: The right-most column, where comments can be left on any of the
+- `"notes"`: The right-most column, where notes can be left on any of the
   headers or bars.
-- `"notes"`: A single row below the bars section, where source-specific notes
-  may be left.
+- `"comments"`: A single row below the bars section, where source-specific
+  comments may be left.
 - `"summary"`: In the master spreadsheet, a column for each source for a summary
   of all the volunteer inputs.
 
@@ -158,8 +158,8 @@ Each field under `"values"` has the following meaning:
 
 - `"defaultBarCount"`: If no bar counts are given in `"pieces"`, use this value.
   Must be positive.
-- `"notesRowHeight"`: The number of pixels to make the height of the notes row.
-  Must be at least 21 (the default height of a row).
+- `"commentsRowHeight"`: The number of pixels to make the height of the comments
+  row. Must be at least 21 (the default height of a row).
 
 In the future, there will be additional fields for customizing font, font size,
 font weight, etc.
