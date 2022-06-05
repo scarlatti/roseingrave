@@ -298,7 +298,6 @@ class Piece:
         headers = tuple(self._template['metaDataFields'].keys())
 
         headers_start = 2
-
         headers_iter = [
             (headers_start + i, header)
             for i, header in enumerate(headers)
@@ -308,7 +307,7 @@ class Piece:
         blank_row2 = blank_row1 + bar_count + 1
         comments_row = blank_row2 + 1
 
-        bars_start = blank_row1 + 1
+        bars_start = blank_row1
         bars_iter = [
             (bars_start + i, str(i + 1))
             for i in range(bar_count)
@@ -329,12 +328,12 @@ class Piece:
                 # row 2
                 values[1].append(email)
                 # headers
-                for r, header in headers_iter:
-                    values[r].append(volunteer[header])
+                for row, header in headers_iter:
+                    values[row].append(volunteer[header])
                 # bars
                 bars = volunteer['bars']
-                for r, bar_num in bars_iter:
-                    values[r].append(bars[bar_num])
+                for row, bar_num in bars_iter:
+                    values[row].append(bars[bar_num])
                 # comments
                 values[comments_row - 1].append(volunteer['comments'])
 
@@ -365,11 +364,11 @@ class Piece:
 
         values[0].append(self._template['commentFields']['notes'])
         notes = piece_data['notes']
-        for r, header in headers_iter:
-            values[r].append(note_str(notes[header]))
+        for row, header in headers_iter:
+            values[row].append(note_str(notes[header]))
         bars = notes['bars']
-        for r, bar_num in bars_iter:
-            values[r].append(note_str(bars[bar_num]))
+        for row, bar_num in bars_iter:
+            values[row].append(note_str(bars[bar_num]))
 
         # put the values
         sheet.update(values, raw=False)
@@ -396,6 +395,10 @@ class Piece:
             Tuple[bool, Dict]: Whether the export was successful,
                 and the data in JSON format.
         """
+        ERROR_RETURN = False, None
+
+        def _error(msg, *args, **kwargs):
+            return error(msg.format(*args, **kwargs), ERROR_RETURN)
 
         values = sheet.get_values(value_render_option='formula')
 
@@ -409,44 +412,157 @@ class Piece:
         headers = tuple(template['metaDataFields'].keys())
 
         headers_range = (1, 1 + len(headers))
+        headers_iter = list(zip(range(*headers_range), headers))
+
         bars_range = (1 + len(headers) + 1, len(values) - 2)
+        bars_iter = list(range(*bars_range))
+
         comments_row = len(values) - 1
+
+        def export_column(col, include_comments=True):
+            column = {}
+            for row, header in headers_iter:
+                column[header] = values[row][col]
+            bars = {}
+            for row in bars_iter:
+                bars[values[row][0]] = values[row][col]
+            column['bars'] = bars
+            if include_comments:
+                column['comments'] = values[comments_row][col]
+            return column
 
         sources = []
         for col in range(1, len(row1) - 1):
             link, name = _parse_hyperlink(values[0][col])
             if link is None:
                 col_letter = rowcol_to_a1(1, col+1)[: -1]
-                error(
-                    f'sheet "{sheet.title}": column {col_letter} '
-                    'doesn\'t have a valid hyperlink'
+                return _error(
+                    'sheet "{}": column {} doesn\'t have a valid '
+                    'hyperlink',
+                    sheet.title, col_letter
                 )
-                return False, None
 
             source = {
                 'name': name,
                 'link': link,
+                **export_column(col),
             }
-
-            for row, header in zip(range(*headers_range), headers):
-                source[header] = values[row][col]
-
-            bars_values = {}
-            for row in range(*bars_range):
-                bars_values[values[row][0]] = values[row][col]
-            source['bars'] = bars_values
-
-            source['comments'] = values[comments_row][col]
-
             sources.append(source)
 
+        notes_col = len(row1) - 1
+        notes = export_column(notes_col, False)
+
+        return True, {
+            'title': piece_name,
+            'link': piece_link,
+            'sources': sources,
+            'notes': notes,
+        }
+
+    @staticmethod
+    def export_master_sheet(sheet, template):
+        """Export a sheet from the master spreadsheet.
+        Assumes same format as a created sheet from
+        `Piece.create_master_sheet()`.
+        Assumes the last column for each source is the summary column.
+
+        Args:
+            sheet (gspread.Worksheet): The sheet.
+            template (Dict): The template settings.
+
+        Returns:
+            Tuple[bool, Dict]: Whether the export was successful,
+                and the data in JSON format.
+        """
+        ERROR_RETURN = False, None
+
+        def _error(msg, *args, **kwargs):
+            return error(msg.format(*args, **kwargs), ERROR_RETURN)
+
+        values = sheet.get_values(value_render_option='formula')
+
+        # row 1
+        row1 = values[0]
+
+        piece_link, piece_name = _parse_hyperlink(row1[0])
+        if piece_name is None:
+            piece_name = row1[0]
+
+        headers = tuple(template['metaDataFields'].keys())
+
+        headers_range = (2, 2 + len(headers))
+        headers_iter = list(zip(range(*headers_range), headers))
+        print('headers:', headers_iter)
+
+        bars_range = (2 + len(headers) + 1, len(values) - 2)
+        bars_iter = list(range(*bars_range))
+        print('bars:', bars_range)
+
+        comments_row = len(values) - 1
+
+        sources = []
+        curr_source = {}
+        for col in range(1, len(row1) - 1):
+            if values[0][col] != '':
+                # new source
+                link, name = _parse_hyperlink(values[0][col])
+                if link is None:
+                    col_letter = rowcol_to_a1(1, col+1)[: -1]
+                    return _error(
+                        'sheet "{}": column {} doesn\'t have a valid '
+                        'hyperlink',
+                        sheet.title, col_letter
+                    )
+
+                curr_source = {
+                    'name': name,
+                    'link': link,
+                    'volunteers': {},
+                    'summary': None,
+                }
+                sources.append(curr_source)
+
+            # always overwrite summary, pushing existing to volunteers
+            email = values[1][col]
+
+            column = {}
+            for row, header in headers_iter:
+                column[header] = values[row][col]
+            bars = {}
+            for row in bars_iter:
+                bars[values[row][0]] = values[row][col]
+            column['bars'] = bars
+            column['comments'] = values[comments_row][col]
+
+            if curr_source['summary'] is not None:
+                # push to volunteers
+                prev_email, prev_column = curr_source['summary']
+                curr_source['volunteers'][prev_email] = prev_column
+            # save to summary
+            curr_source['summary'] = (email, column)
+
+        # fix all summaries
+        for source in sources:
+            _, summary = source['summary']
+            source['summary'] = summary
+
+        def parse_note(note_str):
+            note = {}
+            for line in note_str.split('\n'):
+                if line == '':
+                    continue
+                email, text = line.split(': ', 1)
+                note[email] = text
+            return note
+
+        notes_col = len(row1) - 1
         notes = {}
-        for row, header in zip(range(*headers_range), headers):
-            notes[header] = values[row][-1]
-        bars_notes = {}
-        for row in range(*bars_range):
-            bars_notes[values[row][0]] = values[row][-1]
-        notes['bars'] = bars_notes
+        for row, header in headers_iter:
+            notes[header] = parse_note(values[row][notes_col])
+        bars = {}
+        for row in bars_iter:
+            bars[values[row][0]] = parse_note(values[row][notes_col])
+        notes['bars'] = bars
 
         return True, {
             'title': piece_name,

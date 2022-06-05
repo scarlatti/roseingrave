@@ -262,8 +262,6 @@ master spreadsheet.
 
 Run with `python -m roseingrave <command> [options]`.
 
-More commands to come.
-
 ### `reauth`
 
 Reauthenticate the credentials for your OAuth Client.
@@ -393,13 +391,18 @@ outputs the spreadsheet link to `"spreadsheetsIndex"`.
 - `-si`: A filepath to replace `"spreadsheetsIndex"`.
 - `--strict` (flag): Fail on warnings instead of only displaying them.
 
-<!-- TODO: below -->
-
-<!--
 ### `export_master`
 
-- exports the master spreadsheet to a JSON file
-- requires `spreadsheets.json` (for the spreadsheet link)
-  - or `-s other_spreadsheets.json`? is this too bulky?
-- outputs/replaces `summary.json` (same as `compile_pieces`)
--->
+Export the master spreadsheet.
+
+Requires `"spreadsheetsIndex"` and `"template"`. Outputs data to `"summary"`.
+
+If the spreadsheet doesn't match `"template"`, there is undefined behavior. For
+proper exported data, ensure that the spreadsheet has the correct format.
+
+#### Options
+
+- `-si`: A filepath to replace `"spreadsheetsIndex"`.
+- `-td`: A filepath to replace `"template"`.
+- `-s`: A filepath to replace `"summary"`.
+- `--strict` (flag): Fail on warnings instead of only displaying them.
