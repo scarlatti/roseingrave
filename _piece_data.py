@@ -269,17 +269,36 @@ class PieceData:
             bool: Whether the addition was successful.
         """
 
-        # FIXME
-        # if assume data from sheets is good, can update `self._link`
-        # otherwise, treat piece definitions as absolute source of truth
+        p_loc = f'volunteer "{email}", piece "{self._name}"'
+
+        link = data['link']
+        warning = False
+        if self._link is None:
+            if link is not None:
+                warning = True
+                logger.warning(
+                    'Extra piece link "{}" for {}', link, p_loc
+                )
+        else:
+            if link is None:
+                warning = True
+                logger.warning('Missing piece link for {}', p_loc)
+            elif link != self._link:
+                warning = True
+                logger.warning(
+                    'Incorrect piece link "{}" for {}', link, p_loc
+                )
+        if strict and warning:
+            fail_on_warning()
+            return False
 
         # sources
         for name, source in data['sources'].items():
             if name not in self._sources:
                 logger.warning(
-                    'Unknown source "{}" for volunteer "{}", '
-                    'piece "{}" (not in piece definitions file)',
-                    name, email, self._name
+                    'Unknown source "{}" for {} '
+                    '(not in piece definitions file)',
+                    name, p_loc
                 )
                 if strict:
                     fail_on_warning()

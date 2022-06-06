@@ -923,27 +923,25 @@ def _validate_piece(pieces,
     if v_loc is not None:
         p_loc = f'{v_loc}, {p_loc}'
 
+    warning = False
     if piece_obj.link is None:
         if p_link is not None:
+            warning = True
             logger.warning(
                 'Extra piece link "{}" for {}', p_link, p_loc
             )
-            if strict:
-                fail_on_warning()
-                return ERROR_RETURN
     else:
         if p_link is None:
+            warning = True
             logger.warning('Missing piece link for {}', p_loc)
-            if strict:
-                fail_on_warning()
-                return ERROR_RETURN
         elif p_link != piece_obj.link:
+            warning = True
             logger.warning(
                 'Incorrect piece link "{}" for {}', p_link, p_loc
             )
-            if strict:
-                fail_on_warning()
-                return ERROR_RETURN
+    if strict and warning:
+        fail_on_warning()
+        return ERROR_RETURN
 
     sources = {}
     for i, raw_source in enumerate(raw_piece['sources']):
