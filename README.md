@@ -97,7 +97,8 @@ use for created spreadsheets. The default values are:
     "title": "{email}",
     "publicAccess": null,
     "shareWithVolunteer": true,
-    "shareWith": []
+    "shareWith": [],
+    "resize": true
   },
   "metaDataFields": {
     "title": "Title",
@@ -140,8 +141,12 @@ for the master and volunteer spreadsheets respectively:
 - `"shareWith"`: An array of email addresses to give edit access of the
   spreadsheet to.
 
-`"volunteerSpreadsheet.shareWithVolunteer"` is a boolean value for whether the
-spreadsheet should be shared with the volunteer's email.
+For `"volunteerSpreadsheet"` specifically:
+
+- `"shareWithVolunteer"`: Whether the spreadsheet should be shared with the
+  volunteer's email.
+- `"resize"`: Whether the source columns should be resized to fit any
+  potentially long source names.
 
 Each field under `"metaDataFields"` defines the name of each header, which go in
 the rows above the bars section.

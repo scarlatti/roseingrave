@@ -70,6 +70,7 @@ FILES = {
             'publicAccess': None,
             'shareWithVolunteer': True,
             'shareWith': [],
+            'resize': True,
         },
         'metaDataFields': {
             'title': 'Title',
@@ -352,13 +353,6 @@ def read_template(path=None, strict=False):
             )
 
     # validate values
-    # volunteer spreadsheet title must have "{email}" at most once
-    if values['volunteerSpreadsheet']['title'].count('{email}') > 1:
-        invalid = True
-        _error(
-            '"volunteerSpreadsheet"."title": '
-            'can only contain "{email}" at most once'
-        )
     # public access options
     for ss in ('masterSpreadsheet', 'volunteerSpreadsheet'):
         value = values[ss]['publicAccess']
@@ -369,16 +363,28 @@ def read_template(path=None, strict=False):
                 '(must be null, "view", or "edit")',
                 ss, value
             )
+            # reset to default
             values[ss]['publicAccess'] = FILES[key][ss]['publicAccess']
-    # "shareWithVolunteer" must be a boolean
-    swv = values['volunteerSpreadsheet']['shareWithVolunteer']
-    if swv not in (True, False):
-        warning = True
-        logger.warning(
-            '"volunteerSpreadsheet"."shareWithVolunteer": '
-            'invalid value "{}" (must be true or false)',
-            swv
+    # volunteer spreadsheet title must have "{email}" at most once
+    if values['volunteerSpreadsheet']['title'].count('{email}') > 1:
+        invalid = True
+        _error(
+            '"volunteerSpreadsheet"."title": '
+            'can only contain "{email}" at most once'
         )
+    # must be a boolean
+    for k in ('shareWithVolunteer', 'resize'):
+        val = values['volunteerSpreadsheet'][k]
+        if val not in (True, False):
+            warning = True
+            logger.warning(
+                '"volunteerSpreadsheet"."{}": invalid value "{}" '
+                '(must be true or false)',
+                k, val
+            )
+            # reset to default
+            values['volunteerSpreadsheet'][k] = \
+                FILES[key]['volunteerSpreadsheet'][k]
     # default bar count must be positive
     if values['values']['defaultBarCount'] <= 0:
         invalid = True

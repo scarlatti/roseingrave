@@ -26,6 +26,13 @@ HYPERLINK_RE = re.compile(r'=HYPERLINK\("(.+)", "(.+)"\)')
 # ======================================================================
 
 
+def _col_str(col):
+    """Return the column string of a column number (1-indexed)."""
+    return rowcol_to_a1(1, col)[:-1]
+
+# ======================================================================
+
+
 def _hyperlink(text, link=None):
     """Create a hyperlink formula with optional link.
 
@@ -253,6 +260,10 @@ class Piece:
         bar_count = self.final_bar_count
         bars_section = [[i + 1] for i in range(bar_count)]
 
+        # to make sure columns are auto-resized with a minimum width,
+        # insert this text (154 pixels) in every column, then remove it
+        # after formatting
+        self._values[0][-1] = ['placeholderplaceholde'] * len(row1[0])
         values = row1 + self._values[0] + bars_section + self._values[1]
 
         # put the values
@@ -267,6 +278,9 @@ class Piece:
             spreadsheet, sheet, self._template,
             notes_col, blank_row1, blank_row2, comments_row
         )
+
+        sheet.batch_clear([f'A{blank_row1}:{blank_row1}'])
+        self._values[0][-1] = []
 
         return sheet
 
@@ -435,11 +449,10 @@ class Piece:
         for col in range(1, len(row1) - 1):
             link, name = _parse_hyperlink(values[0][col])
             if link is None:
-                col_letter = rowcol_to_a1(1, col+1)[: -1]
                 return _error(
                     'sheet "{}": column {} doesn\'t have a valid '
                     'hyperlink',
-                    sheet.title, col_letter
+                    sheet.title, _col_str(col + 1)
                 )
 
             source = {
@@ -507,11 +520,10 @@ class Piece:
                 # new source
                 link, name = _parse_hyperlink(values[0][col])
                 if link is None:
-                    col_letter = rowcol_to_a1(1, col+1)[: -1]
                     return _error(
                         'sheet "{}": column {} doesn\'t have a valid '
                         'hyperlink',
-                        sheet.title, col_letter
+                        sheet.title, _col_str(col + 1)
                     )
 
                 curr_source = {
@@ -598,10 +610,7 @@ def _format_sheet(spreadsheet, sheet, template,
 
     if source_cols is None:
         source_cols = []
-    source_col_strs = [
-        rowcol_to_a1(1, col)[:-1]
-        for col in source_cols
-    ]
+    source_cols.append(notes_col)
 
     requests = []
 
@@ -651,36 +660,40 @@ def _format_sheet(spreadsheet, sheet, template,
             'userEnteredFormat.verticalAlignment',
         ))
     }
-    source_end_column = rowcol_to_a1(header_end, notes_col - 1)
-    notes_column = rowcol_to_a1(1, notes_col)[:-1]
-    range_formats = (
+    source_end_column = _col_str(notes_col - 1)
+    notes_column = _col_str(notes_col)
+    range_formats = [
         # piece name
         ('A1', bolded),
         # headers
         (f'A2:A{blank_row1 - 1}', bolded),
         # sources
-        (f'B1:{source_end_column}', centered_bolded),
+        (f'B1:{source_end_column}1', centered_bolded),
         # notes header
         (f'{notes_column}1', bolded),
         # comments header
         (f'A{comments_row}', bolded),
         # comments row
         (f'B{comments_row}:{comments_row}', wrapped_top_align),
-    )
+    ]
     if is_master:
-        # make all email cells be left-aligned
-        left_align = {
+        # make all summary cells be centered
+        center_align = {
             'cell': {
                 'userEnteredFormat': {
-                    'horizontalAlignment': 'LEFT',
+                    'horizontalAlignment': 'CENTER',
                 },
             },
             'fields': 'userEnteredFormat.horizontalAlignment',
         }
-        range_formats += tuple(
-            (f'{col_str}2', left_align)
-            for col_str in source_col_strs
-        )
+        range_formats += [
+            (f'{_col_str(col - 1)}2', center_align)
+            for col in source_cols[1:]
+        ]
+        # make volunteers line bolded
+        range_formats += [
+            (f'B2:{source_end_column}2', bolded),
+        ]
     for range_name, fmt in range_formats:
         requests.append({
             'repeatCell': {
@@ -703,14 +716,13 @@ def _format_sheet(spreadsheet, sheet, template,
             (f'{header_end}:{header_end}', {'bottom': double_border}),
         ]
 
-        source_cols.append(notes_col)
-
         # double border before every source column
         left_double_border = {'left': double_border}
-        range_borders += [
-            (f'{col_str}:{col_str}', left_double_border)
-            for col_str in source_col_strs
-        ]
+        for col in source_cols:
+            col_str = _col_str(col)
+            range_borders.append(
+                (f'{col_str}:{col_str}', left_double_border)
+            )
 
         # merge source columns
         for i in range(len(source_cols) - 1):
@@ -783,6 +795,19 @@ def _format_sheet(spreadsheet, sheet, template,
                     'sheetId': sheet_id,
                     'dimension': 'COLUMNS',
                     **pos
+                },
+            }
+        })
+
+    if not is_master and template['volunteerSpreadsheet']['resize']:
+        # auto-resize all source columns
+        requests.append({
+            'autoResizeDimensions': {
+                'dimensions': {
+                    'sheetId': sheet_id,
+                    'dimension': 'COLUMNS',
+                    'startIndex': 1,
+                    'endIndex': notes_col - 1,
                 },
             }
         })
@@ -877,8 +902,7 @@ def _format_sheet(spreadsheet, sheet, template,
                 },
                 'rule': {
                     'condition': condition,
-                    # 'inputMessage': '',
-                    # 'strict': False,
+                    'strict': False,
                     'showCustomUi': True,
                 },
             }
