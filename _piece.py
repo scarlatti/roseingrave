@@ -264,7 +264,7 @@ class Piece:
         comments_row = blank_row2 + 1
 
         _format_sheet(
-            spreadsheet, sheet.id, self._template,
+            spreadsheet, sheet, self._template,
             notes_col, blank_row1, blank_row2, comments_row
         )
 
@@ -374,7 +374,7 @@ class Piece:
         sheet.update(values, raw=False)
 
         _format_sheet(
-            spreadsheet, sheet.id, self._template,
+            spreadsheet, sheet, self._template,
             notes_col, blank_row1, blank_row2, comments_row,
             is_master=True, source_cols=source_cols
         )
@@ -574,11 +574,13 @@ class Piece:
 # ======================================================================
 
 
-def _format_sheet(spreadsheet, sheet_id, template,
+def _format_sheet(spreadsheet, sheet, template,
                   notes_col, blank_row1, blank_row2, comments_row,
                   is_master=False, source_cols=None
                   ):
     """Format a piece sheet."""
+
+    sheet_id = sheet.id
 
     def hex_to_rgb(hex_color):
         """Changes a hex color code (no pound) to an RGB color dict.
@@ -778,7 +780,7 @@ def _format_sheet(spreadsheet, sheet_id, template,
                 },
                 'fields': 'pixelSize',
                 'range': {
-                    'sheet_id': sheet_id,
+                    'sheetId': sheet_id,
                     'dimension': 'COLUMNS',
                     **pos
                 },
@@ -793,7 +795,7 @@ def _format_sheet(spreadsheet, sheet_id, template,
             },
             'fields': 'pixelSize',
             'range': {
-                'sheet_id': sheet_id,
+                'sheetId': sheet_id,
                 'dimension': 'ROWS',
                 'startIndex': comments_row - 1,  # 0-indexed here
                 'endIndex': comments_row,
@@ -801,7 +803,7 @@ def _format_sheet(spreadsheet, sheet_id, template,
         }
     })
 
-    # freeze row 1 and column 1
+    # freeze header rows and column 1
     requests.append({
         'updateSheetProperties': {
             'properties': {
@@ -833,14 +835,54 @@ def _format_sheet(spreadsheet, sheet_id, template,
             'bandedRange': {
                 'range': {
                     'sheetId': sheet_id,
+                    'startRowIndex': 0,
+                    'endRowIndex': comments_row - 1,
                     'startColumnIndex': 1,
                     'endColumnIndex': notes_col - 1,
-                    'endRowIndex': comments_row - 1,
                 },
                 **white_gray_banding,
             },
         }
     })
+
+    # data validation
+    header_rows = {
+        header: header_end + i
+        for i, header in enumerate(template['metaDataFields'].keys())
+    }
+    for key, validation in template['validation'].items():
+        row = header_rows[key]
+        v_type = validation['type']
+        if v_type == 'checkbox':
+            condition = {'type': 'BOOLEAN'}
+        elif v_type == 'dropdown':
+            condition = {
+                'type': 'ONE_OF_LIST',
+                'values': [
+                    {'userEnteredValue': val}
+                    for val in validation['values']
+                ],
+            }
+        else:
+            # shouldn't happen
+            continue
+        requests.append({
+            'setDataValidation': {
+                'range': {
+                    'sheetId': sheet_id,
+                    'startRowIndex': row,
+                    'endRowIndex': row + 1,
+                    'startColumnIndex': 1,
+                    'endColumnIndex': notes_col - 1,
+                },
+                'rule': {
+                    'condition': condition,
+                    # 'inputMessage': '',
+                    # 'strict': False,
+                    'showCustomUi': True,
+                },
+            }
+        })
 
     body = {'requests': requests}
     spreadsheet.batch_update(body)

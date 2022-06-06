@@ -115,6 +115,7 @@ use for created spreadsheets. The default values are:
     "dynamic": "Dynamic signs",
     "otherIndications": "Other indications"
   },
+  "validation": {},
   "commentFields": {
     "notes": "Notes",
     "comments": "Comments",
@@ -144,6 +145,25 @@ spreadsheet should be shared with the volunteer's email.
 
 Each field under `"metaDataFields"` defines the name of each header, which go in
 the rows above the bars section.
+
+Each field under `"validation"` defines specific values that any of the header
+fields can take. In particular, a header value may be a dropdown with a
+predefined list of choices or it may be a checkbox. To define these, use the
+following example format:
+
+```json
+{
+  "validation": {
+    "keySig": {
+      "type": "dropdown",
+      "values": ["C major", "G major", "D major", "A major", "E major"]
+    },
+    "hand": {
+      "type": "checkbox"
+    }
+  }
+}
+```
 
 Each field under `"commentFields"` has the following meaning:
 

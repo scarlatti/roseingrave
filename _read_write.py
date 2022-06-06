@@ -309,6 +309,8 @@ def read_template(path=None, strict=False):
     except FileNotFoundError as ex:
         return _error(ex)
     values = {}
+    invalid = False
+    warning = False
 
     # no required fields
 
@@ -318,11 +320,38 @@ def read_template(path=None, strict=False):
         values[level] = {}
         for k, default in level_defaults.items():
             values[level][k] = level_values.get(k, default)
+    # validation
+    values['validation'] = {}
+    for k, validation in raw_values.get('validation', {}).items():
+        if k not in values['metaDataFields']:
+            warning = True
+            logger.warning('validation: unknown key "{}"', k)
+            continue
+        if 'type' not in validation:
+            warning = True
+            logger.warning('"{}" validation: no type', k)
+            continue
+        v_type = validation['type']
+        if v_type == 'checkbox':
+            values['validation'][k] = {'type': 'checkbox'}
+        elif v_type == 'dropdown':
+            if len(validation.get('values', [])) == 0:
+                warning = True
+                logger.warning(
+                    '"{}" validation: no values for dropdown', k
+                )
+                continue
+            values['validation'][k] = {
+                'type': 'dropdown',
+                'values': validation['values'],
+            }
+        else:
+            warning = True
+            logger.warning(
+                '"{}" validation: unknown type "{}"', k, v_type
+            )
 
     # validate values
-    invalid = False
-    warning = False
-
     # volunteer spreadsheet title must have "{email}" at most once
     if values['volunteerSpreadsheet']['title'].count('{email}') > 1:
         invalid = True
