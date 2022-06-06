@@ -17,6 +17,7 @@ from ._read_write import (
 )
 from ._sheets import (
     gspread_auth,
+    create_spreadsheet,
     open_spreadsheet,
     add_temp_sheet,
     share_spreadsheet,
@@ -55,13 +56,19 @@ def create_spreadsheets(gc, spreadsheets, template, emails):
             gc.del_spreadsheet(ss)
 
     ss_settings = template['volunteerSpreadsheet']
+    folder = ss_settings['folder']
     title_fmt = ss_settings['title']
     public_access = ss_settings['publicAccess']
     share_with_volunteer = ss_settings['shareWithVolunteer']
     share_with = ss_settings['shareWith']
 
     for email in emails:
-        spreadsheet = gc.create(title_fmt.format(email=email))
+        success, spreadsheet = create_spreadsheet(
+            gc, title_fmt.format(email=email), folder
+        )
+        if not success:
+            delete_created()
+            return False
         created.append(spreadsheet.id)
 
         success = add_permissions(

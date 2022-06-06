@@ -16,6 +16,7 @@ from ._read_write import (
 )
 from ._sheets import (
     gspread_auth,
+    create_spreadsheet,
     open_spreadsheet,
     add_temp_sheet,
     add_permissions,
@@ -147,7 +148,11 @@ def import_master(create, td, pd, summary_path, si, strict):
     if create:
         ss_settings = template['masterSpreadsheet']
 
-        spreadsheet = gc.create(ss_settings['title'])
+        success, spreadsheet = create_spreadsheet(
+            gc, ss_settings['title'], ss_settings['folder']
+        )
+        if not success:
+            return
 
         # permissions
         success = add_permissions(

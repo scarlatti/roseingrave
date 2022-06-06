@@ -18,6 +18,7 @@ from ._read_write import (
 
 __all__ = (
     'gspread_auth',
+    'create_spreadsheet',
     'open_spreadsheet',
     'add_temp_sheet',
     'share_spreadsheet', 'share_public',
@@ -76,6 +77,50 @@ def gspread_auth(force=False):
 # ======================================================================
 
 
+def create_spreadsheet(gc, name, folder=None):
+    """Create a spreadsheet.
+
+    Args:
+        gc (gspread.Client): The client.
+        name (str): The name of the spreadsheet.
+        folder (Optional[str]): The id of the Google Drive folder to
+            save the spreadsheet in.
+            Default is None (save in root).
+
+    Returns:
+        Tuple[bool, gspread.Spreadsheet]:
+            Whether the creation was successful, and the spreadsheet.
+    """
+
+    # code -> error reason -> message
+    ERRORS = {
+        404: {
+            'notFound': (
+                f'Couldn\'t find folder "{folder}". '
+                'Please check that it\'s correct or remove it.'
+            ),
+        },
+    }
+
+    try:
+        return True, gc.create(name, folder)
+    except gspread.exceptions.APIError as ex:
+        args = ex.args[0]
+
+        code = args['code']
+        if code in ERRORS:
+            for err in args['errors']:
+                reason = err['reason']
+                if reason in ERRORS[code]:
+                    error(ERRORS[code][reason])
+                    return False, None
+
+        # re-raise
+        raise
+
+# ======================================================================
+
+
 def open_spreadsheet(gc, link):
     """Open a spreadsheet.
 
@@ -88,6 +133,7 @@ def open_spreadsheet(gc, link):
             Whether the open was successful, and the spreadsheet.
     """
 
+    # code -> status -> message
     ERRORS = {
         403: {
             'PERMISSION_DENIED': (
@@ -138,6 +184,7 @@ def add_temp_sheet(spreadsheet, invalid=None):
             Whether the addition was successful, and the temp sheet.
     """
 
+    # code -> status -> message
     ERRORS = {
         403: {
             'PERMISSION_DENIED': (
@@ -190,6 +237,8 @@ def _access_to_role(access, default):
 
 def _share(spreadsheet, email, *args, **kwargs):
     """Share a spreadsheet. Return True if successful."""
+
+    # code -> error reason -> message
     ERRORS = {
         400: {
             'invalid': (

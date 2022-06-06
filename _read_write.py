@@ -61,11 +61,13 @@ FILES = {
     'template': {
         # the default template
         'masterSpreadsheet': {
+            'folder': None,
             'title': 'Master Spreadsheet',
             'publicAccess': None,
             'shareWith': [],
         },
         'volunteerSpreadsheet': {
+            'folder': None,
             'title': '{email}',
             'publicAccess': None,
             'shareWithVolunteer': True,

@@ -89,11 +89,13 @@ use for created spreadsheets. The default values are:
 ```json
 {
   "masterSpreadsheet": {
+    "folder": null,
     "title": "Master Spreadsheet",
     "publicAccess": null,
     "shareWith": []
   },
   "volunteerSpreadsheet": {
+    "folder": null,
     "title": "{email}",
     "publicAccess": null,
     "shareWithVolunteer": true,
@@ -132,6 +134,11 @@ use for created spreadsheets. The default values are:
 The `"masterSpreadsheet"` and `"volunteerSpreadsheet"` values define information
 for the master and volunteer spreadsheets respectively:
 
+- `"folder"`: The id of the Google Drive folder to save the created
+  spreadsheets. A value of `null` means the root folder.
+  - A folder id can be found from the link in the address bar while the
+    folder is open: `https://drive.google.com/drive/folders/FOLDER_ID`. Be sure to
+    remove any unnecessary values after `?`, such as `?resourcekey=`.
 - `"title"`: The title of the spreadsheet, or the format of the title for
   `"volunteerSpreadsheet"`, with the format string `"{email}"` (at most once)
   representing the email of the volunteer.
