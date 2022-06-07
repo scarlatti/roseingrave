@@ -118,9 +118,7 @@
         "¢; 12/8"
       ]
     },
-    "notBipartite": {
-      "type": "checkbox"
-    },
+    "notBipartite": { "type": "checkbox" },
     "hand": {
       "type": "dropdown",
       "values": [

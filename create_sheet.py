@@ -250,7 +250,7 @@ def create_sheet(emails, replace, new, td, pd, vd, si, strict):
             if email not in volunteers:
                 logger.warning(
                     'Volunteer "{}" not found in volunteer definitions '
-                    ' file',
+                    'file',
                     email
                 )
                 continue
