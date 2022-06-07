@@ -92,7 +92,8 @@ use for created spreadsheets. The default values are:
     "folder": null,
     "title": "Master Spreadsheet",
     "publicAccess": null,
-    "shareWith": []
+    "shareWith": [],
+    "resize": true
   },
   "volunteerSpreadsheet": {
     "folder": null,
@@ -157,13 +158,13 @@ for the master and volunteer spreadsheets respectively:
   `null`.
 - `"shareWith"`: An array of email addresses to give edit access of the
   spreadsheet to.
+- `"resize"`: Whether the headers column and the source columns should be
+  resized to fit the content.
 
 For `"volunteerSpreadsheet"` specifically:
 
 - `"shareWithVolunteer"`: Whether the spreadsheet should be shared with the
   volunteer's email.
-- `"resize"`: Whether the source columns should be resized to fit any
-  potentially long source names.
 
 Each field under `"metaDataFields"` defines the name of each header, which go in
 the rows above the bars section.
@@ -186,6 +187,9 @@ following example format:
   }
 }
 ```
+
+Also see [`validation_example.json`](examples/validation_example.json) for a
+larger example.
 
 Each field under `"commentFields"` has the following meaning:
 

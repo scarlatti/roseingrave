@@ -260,27 +260,36 @@ class Piece:
         bar_count = self.final_bar_count
         bars_section = [[i + 1] for i in range(bar_count)]
 
-        # to make sure columns are auto-resized with a minimum width,
-        # insert this text (154 pixels) in every column, then remove it
-        # after formatting
-        self._values[0][-1] = ['placeholderplaceholde'] * len(row1[0])
         values = row1 + self._values[0] + bars_section + self._values[1]
-
-        # put the values
-        sheet.update(values, raw=False)
 
         notes_col = len(row1[0])
         blank_row1 = 1 + len(self._values[0])  # row 1 + headers
         blank_row2 = blank_row1 + bar_count + 1
         comments_row = blank_row2 + 1
 
+        # to make sure columns are auto-resized with a minimum width,
+        # insert text in every column, then remove it after formatting
+        resize = self._template['volunteerSpreadsheet']['resize']
+        if resize:
+            values[blank_row1 - 1] = (
+                # header column (202 pixels)
+                ['placeholderplaceholderplaceh'] +
+                # source columns (154 pixels)
+                ['placeholderplaceholde'] * (len(row1[0]) - 2)
+            )
+
+        # put the values
+        sheet.update(values, raw=False)
+
         _format_sheet(
             spreadsheet, sheet, self._template,
-            notes_col, blank_row1, blank_row2, comments_row
+            notes_col, blank_row1, blank_row2, comments_row,
+            resize=resize
         )
 
-        sheet.batch_clear([f'A{blank_row1}:{blank_row1}'])
-        self._values[0][-1] = []
+        if resize:
+            sheet.batch_clear([f'A{blank_row1}:{blank_row1}'])
+            values[blank_row1 - 1] = []
 
         return sheet
 
@@ -384,14 +393,23 @@ class Piece:
         for row, bar_num in bars_iter:
             values[row].append(note_str(bars[bar_num]))
 
+        # force headers column to be 202 pixels minimum
+        resize = self._template['masterSpreadsheet']['resize']
+        if resize:
+            values[blank_row1 - 1] = ['placeholderplaceholderplaceh']
+
         # put the values
         sheet.update(values, raw=False)
 
         _format_sheet(
             spreadsheet, sheet, self._template,
             notes_col, blank_row1, blank_row2, comments_row,
-            is_master=True, source_cols=source_cols
+            resize=resize, is_master=True, source_cols=source_cols
         )
+
+        if resize:
+            sheet.batch_clear([f'A{blank_row1}'])
+            values[blank_row1 - 1] = []
 
         return sheet
 
@@ -588,7 +606,7 @@ class Piece:
 
 def _format_sheet(spreadsheet, sheet, template,
                   notes_col, blank_row1, blank_row2, comments_row,
-                  is_master=False, source_cols=None
+                  resize=False, is_master=False, source_cols=None
                   ):
     """Format a piece sheet."""
 
@@ -614,10 +632,13 @@ def _format_sheet(spreadsheet, sheet, template,
 
     requests = []
 
-    # make everything middle aligned
+    # make everything except last (comments) row middle aligned
     requests.append({
         'repeatCell': {
-            'range': {'sheetId': sheet_id},
+            'range': {
+                'sheetId': sheet_id,
+                'endRowIndex': blank_row2 - 1,
+            },
             'cell': {
                 'userEnteredFormat': {
                     'verticalAlignment': 'MIDDLE',
@@ -648,6 +669,18 @@ def _format_sheet(spreadsheet, sheet, template,
             'userEnteredFormat.textFormat.bold',
         ))
     }
+    middle_bolded = {
+        'cell': {
+            'userEnteredFormat': {
+                'verticalAlignment': 'MIDDLE',
+                'textFormat': {'bold': True},
+            },
+        },
+        'fields': ','.join((
+            'userEnteredFormat.verticalAlignment',
+            'userEnteredFormat.textFormat.bold',
+        ))
+    }
     wrapped_top_align = {
         'cell': {
             'userEnteredFormat': {
@@ -672,7 +705,7 @@ def _format_sheet(spreadsheet, sheet, template,
         # notes header
         (f'{notes_column}1', bolded),
         # comments header
-        (f'A{comments_row}', bolded),
+        (f'A{comments_row}', middle_bolded),
         # comments row
         (f'B{comments_row}:{comments_row}', wrapped_top_align),
     ]
@@ -776,11 +809,19 @@ def _format_sheet(spreadsheet, sheet, template,
             }
         })
 
-    column_widths = (
-        # column 1: width 200
-        ({'startIndex': 0, 'endIndex': 1}, 200),
-        # all other columns: width 150
-        ({'startIndex': 1, 'endIndex': notes_col - 1}, 150),
+    column_widths = []
+
+    if not resize:
+        column_widths.append(
+            # column 1: width 200
+            ({'startIndex': 0, 'endIndex': 1}, 200),
+        )
+    if is_master or not resize:
+        column_widths.append(
+            # source columns: width 150
+            ({'startIndex': 1, 'endIndex': notes_col - 1}, 150),
+        )
+    column_widths.append(
         # notes col: width 300
         ({'startIndex': notes_col - 1, 'endIndex': notes_col}, 300),
     )
@@ -799,15 +840,16 @@ def _format_sheet(spreadsheet, sheet, template,
             }
         })
 
-    if not is_master and template['volunteerSpreadsheet']['resize']:
-        # auto-resize all source columns
+    if resize:
+        end_col = 1 if is_master else (notes_col - 1)
+        # auto-resize headers column and source columns
         requests.append({
             'autoResizeDimensions': {
                 'dimensions': {
                     'sheetId': sheet_id,
                     'dimension': 'COLUMNS',
-                    'startIndex': 1,
-                    'endIndex': notes_col - 1,
+                    'startIndex': 0,
+                    'endIndex': end_col,
                 },
             }
         })

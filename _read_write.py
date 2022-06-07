@@ -65,6 +65,7 @@ FILES = {
             'title': 'Master Spreadsheet',
             'publicAccess': None,
             'shareWith': [],
+            'resize': True,
         },
         'volunteerSpreadsheet': {
             'folder': None,
