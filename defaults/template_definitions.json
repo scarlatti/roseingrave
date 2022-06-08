@@ -1,0 +1,53 @@
+{
+  "masterSpreadsheet": {
+    "folder": null,
+    "title": "Master Spreadsheet",
+    "publicAccess": null,
+    "shareWith": [],
+    "resize": true
+  },
+  "volunteerSpreadsheet": {
+    "folder": null,
+    "title": "{email}",
+    "publicAccess": null,
+    "shareWithVolunteer": true,
+    "shareWith": [],
+    "resize": true
+  },
+  "metaDataFields": {
+    "title": "Title",
+    "tempo": "Tempo",
+    "isPianoClefs": "Are Clefs G2 and F4?",
+    "clefs": "Clefs if not G2+F4",
+    "keySig": "Key Signature",
+    "timeSig": "Time Signature",
+    "notBipartite": "Sonata Not Bipartite",
+    "barCount": "Number of Bars (1st Half + 2nd Half)",
+    "compassHigh": "Highest-Pitch Note",
+    "compassLow": "Lowest-Pitch Note",
+    "hand": "Hand Signs",
+    "endSignsA": "Endings Signs (1st Half)",
+    "endSignsB": "Endings Signs (2nd Half)",
+    "repeatSigns": "Other Repeat Signs (Not Endings)",
+    "articulation": "Articulation Signs",
+    "dynamic": "Dynamic Signs",
+    "ornamentTrill": "Are there Trills /\\/\\?",
+    "ornamentPlus": "Are there +'s?",
+    "ornamentTr": "Are there Tr.?",
+    "ornamentAcciaccatura": "Any Acciaccatura (grace note)?",
+    "ornamentAppoggiatura": "Any Appoggiatura (barred/slashed grace note)?",
+    "ornamentTremulo": "Is there a Trem. or Tremulo?",
+    "ornamentOthers": "Other Ornamentations",
+    "otherIndications": "Other Indications"
+  },
+  "validation": {},
+  "commentFields": {
+    "notes": "Notes",
+    "comments": "Comments",
+    "summary": "SUMMARY"
+  },
+  "values": {
+    "defaultBarCount": 100,
+    "commentsRowHeight": 75
+  }
+}

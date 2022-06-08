@@ -37,84 +37,17 @@ SETTINGS_FILE = 'roseingrave.json'
 # becomes flattened version of the file
 SETTINGS = {}
 
-# required fields and default values for input files
-FILES = {
-    'settings': {
-        # the default settings
-        'credentials': 'credentials.json',
-        'definitionFiles': {
-            'template': ['input', 'template_definitions.json'],
-            'pieces': ['input', 'piece_definitions.json'],
-            'volunteers': ['input', 'volunteer_definitions.json'],
-        },
-        'outputs': {
-            'spreadsheetsIndex': ['output', 'spreadsheets.json'],
-            'volunteerDataPath': [
-                'output', 'data', 'by-volunteer', '{email}.json'
-            ],
-            'pieceDataPath': [
-                'output', 'data', 'by-piece', '{piece}.json'
-            ],
-            'summary': ['output', 'summary.json'],
-        },
-    },
-    'template': {
-        # the default template
-        'masterSpreadsheet': {
-            'folder': None,
-            'title': 'Master Spreadsheet',
-            'publicAccess': None,
-            'shareWith': [],
-            'resize': True,
-        },
-        'volunteerSpreadsheet': {
-            'folder': None,
-            'title': '{email}',
-            'publicAccess': None,
-            'shareWithVolunteer': True,
-            'shareWith': [],
-            'resize': True,
-        },
-        'metaDataFields': {
-            'title': 'Title',
-            'tempo': 'Tempo',
-            'isPianoClefs': 'Are Clefs G2 and F4?',
-            'clefs': 'Clefs if not G2+F4',
-            'keySig': 'Key Signature',
-            'timeSig': 'Time Signature',
-            'notBipartite': 'Sonata Not Bipartite',
-            'barCount': 'Number of Bars (1st Half + 2nd Half)',
-            'compassHigh': 'Highest-Pitch Note',
-            'compassLow': 'Lowest-Pitch Note',
-            'hand': 'Hand Signs',
-            'endSignsA': 'Endings Signs (1st Half)',
-            'endSignsB': 'Endings Signs (2nd Half)',
-            'repeatSigns': 'Other Repeat Signs (Not Endings)',
-            'articulation': 'Articulation Signs',
-            'dynamic': 'Dynamic Signs',
-            'ornamentTrill': 'Are there Trills /\\/\\?',
-            'ornamentPlus': "Are there +'s?",
-            'ornamentTr': 'Are there Tr.?',
-            'ornamentAcciaccatura': 'Any Acciaccatura (grace note)?',
-            'ornamentAppoggiatura':
-                'Any Appoggiatura (barred/slashed grace note)?',
-            'ornamentTremulo': 'Is there a Trem. or Tremulo?',
-            'ornamentOthers': 'Other Ornamentations',
-            'otherIndications': 'Other Indications',
-        },
-        'commentFields': {
-            'notes': 'Notes',
-            'comments': 'Comments',
-            'summary': 'SUMMARY',
-        },
-        'values': {
-            'defaultBarCount': 100,
-            'commentsRowHeight': 75,
-        },
-    },
-}
 # the options for the "publicAccess" field
 PUBLIC_ACCESS_OPTIONS = (None, 'view', 'edit')
+
+# ======================================================================
+
+
+def _read_default(file):
+    """Read a default configuration from the "defaults" directory."""
+    filepath = Path(Path(__file__).parent, 'defaults', file)
+    contents = filepath.read_text(encoding='utf-8')
+    return json.loads(contents)
 
 # ======================================================================
 
@@ -253,7 +186,7 @@ def _read_settings():
     # no required fields
 
     # add defaults if missing
-    defaults = FILES['settings']
+    defaults = _read_default('roseingrave.json')
 
     # credentials
     path = raw_values.get('credentials', defaults['credentials'])
@@ -321,30 +254,43 @@ def read_template(path=None, strict=False):
 
     try:
         raw_values = _read_json(key, path)
-    except FileNotFoundError as ex:
+    except (FileNotFoundError, ValueError) as ex:
         return _error(ex)
-    values = {}
+    defaults = _read_default('template_definitions.json')
+    values = {
+        level: {**level_defaults}
+        for level, level_defaults in defaults.items()
+    }
     invalid = False
     warning = False
 
     # no required fields
 
-    # add defaults if missing
-    for level, level_defaults in FILES[key].items():
-        level_values = raw_values.get(level, {})
-        values[level] = {}
-        for k, default in level_defaults.items():
-            values[level][k] = level_values.get(k, default)
+    # get values from file
+    for level, level_values in raw_values.items():
+        if level == 'validation':
+            continue
+        if level not in values:
+            warning = True
+            logger.warning('unknown key "{}"', level)
+            continue
+        level_defaults = values[level]
+        for k, value in level_values.items():
+            if k not in level_defaults:
+                warning = True
+                logger.warning('unknown key "{}"."{}"', level, k)
+                continue
+            level_defaults[k] = value
     # validation
     values['validation'] = {}
     for k, validation in raw_values.get('validation', {}).items():
         if k not in values['metaDataFields']:
             warning = True
-            logger.warning('validation: unknown key "{}"', k)
+            logger.warning('"validation": unknown key "{}"', k)
             continue
         if 'type' not in validation:
             warning = True
-            logger.warning('"{}" validation: no type', k)
+            logger.warning('"validation"."{}": no type', k)
             continue
         v_type = validation['type']
         if v_type == 'checkbox':
@@ -353,7 +299,7 @@ def read_template(path=None, strict=False):
             if len(validation.get('values', [])) == 0:
                 warning = True
                 logger.warning(
-                    '"{}" validation: no values for dropdown', k
+                    '"validation"."{}": no values for dropdown', k
                 )
                 continue
             values['validation'][k] = {
@@ -363,7 +309,7 @@ def read_template(path=None, strict=False):
         else:
             warning = True
             logger.warning(
-                '"{}" validation: unknown type "{}"', k, v_type
+                '"validation"."{}"."type": unknown type "{}"', k, v_type
             )
 
     # validate values
@@ -378,35 +324,33 @@ def read_template(path=None, strict=False):
                 ss, value
             )
             # reset to default
-            values[ss]['publicAccess'] = FILES[key][ss]['publicAccess']
+            values[ss]['publicAccess'] = defaults[ss]['publicAccess']
     # volunteer spreadsheet title must have "{email}" at most once
-    if values['volunteerSpreadsheet']['title'].count('{email}') > 1:
+    ss = 'volunteerSpreadsheet'
+    if values[ss]['title'].count('{email}') > 1:
         invalid = True
         _error(
-            '"volunteerSpreadsheet"."title": '
-            'can only contain "{email}" at most once'
+            f'"{ss}"."title": can only contain "{{email}}" at most once'
         )
     # must be a boolean
     for k in ('shareWithVolunteer', 'resize'):
-        val = values['volunteerSpreadsheet'][k]
+        val = values[ss][k]
         if val not in (True, False):
             warning = True
             logger.warning(
-                '"volunteerSpreadsheet"."{}": invalid value "{}" '
-                '(must be true or false)',
-                k, val
+                '"{}"."{}": invalid value "{}" (must be true or false)',
+                ss, k, val
             )
             # reset to default
-            values['volunteerSpreadsheet'][k] = \
-                FILES[key]['volunteerSpreadsheet'][k]
+            values[ss][k] = defaults[ss][k]
     # default bar count must be positive
     if values['values']['defaultBarCount'] <= 0:
         invalid = True
-        _error('"defaultBarCount" must be positive')
+        _error('"values"."defaultBarCount": must be positive')
     # comments row height must be at least 21
     if values['values']['commentsRowHeight'] < 21:
         invalid = True
-        _error('"commentsRowHeight" must be at least 21')
+        _error('"values"."commentsRowHeight": must be at least 21')
 
     if invalid:
         return ERROR_RETURN
@@ -450,10 +394,14 @@ def read_piece_definitions(template,
     def _error(msg):
         return error(msg, ERROR_RETURN)
 
+    success = _read_settings()
+    if not success:
+        return ERROR_RETURN
+
     logger.info('Reading piece definitions file')
     try:
         raw_pieces = _read_json('pieces', path)
-    except FileNotFoundError as ex:
+    except (FileNotFoundError, ValueError) as ex:
         return _error(ex)
     if len(raw_pieces) == 0:
         return _error('no pieces found')
@@ -517,10 +465,14 @@ def read_volunteer_definitions(pieces, path=None, strict=False):
     def _error(msg):
         return error(msg, ERROR_RETURN)
 
+    success = _read_settings()
+    if not success:
+        return ERROR_RETURN
+
     logger.info('Reading volunteer definitions file')
     try:
         raw_volunteers = _read_json('volunteers', path)
-    except FileNotFoundError as ex:
+    except (FileNotFoundError, ValueError) as ex:
         return _error(ex)
     if len(raw_volunteers) == 0:
         return _error('no volunteers found')
@@ -586,6 +538,9 @@ def read_spreadsheets_index(path=None):
         contents = _read_json('spreadsheetsIndex', path)
     except FileNotFoundError:
         contents = {}
+    except ValueError as ex:
+        error(ex)
+        return False, None
     return True, contents
 
 

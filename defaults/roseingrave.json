@@ -1,0 +1,14 @@
+{
+  "credentials": "credentials.json",
+  "definitionFiles": {
+    "template": ["input", "template_definitions.json"],
+    "pieces": ["input", "piece_definitions.json"],
+    "volunteers": ["input", "volunteer_definitions.json"]
+  },
+  "outputs": {
+    "spreadsheetsIndex": ["output", "spreadsheets.json"],
+    "volunteerDataPath": ["output", "data", "by-volunteer", "{email}.json"],
+    "pieceDataPath": ["output", "data", "by-piece", "{piece}.json"],
+    "summary": ["output", "summary.json"]
+  }
+}

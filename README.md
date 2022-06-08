@@ -51,24 +51,8 @@ created in the same directory as `"credentials"`.
 ## Settings
 
 The `roseingrave.json` file defines alternative names for the input and output
-files for the commands. The default configuration is:
-
-```json
-{
-  "credentials": "credentials.json",
-  "definitionFiles": {
-    "template": ["input", "template_definitions.json"],
-    "pieces": ["input", "piece_definitions.json"],
-    "volunteers": ["input", "volunteer_definitions.json"]
-  },
-  "outputs": {
-    "spreadsheetsIndex": ["output", "spreadsheets.json"],
-    "volunteerDataPath": ["output", "data", "by-volunteer", "{email}.json"],
-    "pieceDataPath": ["output", "data", "by-piece", "{piece}.json"],
-    "summary": ["output", "summary.json"]
-  }
-}
-```
+files for the commands. The default configuration can be found
+[here](defaults/roseingrave.json).
 
 Each value can either be a string for the filename, or an array defining the
 path to the file.
@@ -84,63 +68,8 @@ In the following, file names/paths will be referenced by its corresponding key.
 ### `"template"`
 
 The `"template"` file defines the names of rows or columns and other values to
-use for created spreadsheets. The default values are:
-
-```json
-{
-  "masterSpreadsheet": {
-    "folder": null,
-    "title": "Master Spreadsheet",
-    "publicAccess": null,
-    "shareWith": [],
-    "resize": true
-  },
-  "volunteerSpreadsheet": {
-    "folder": null,
-    "title": "{email}",
-    "publicAccess": null,
-    "shareWithVolunteer": true,
-    "shareWith": [],
-    "resize": true
-  },
-  "metaDataFields": {
-    "title": "Title",
-    "tempo": "Tempo",
-    "isPianoClefs": "Are Clefs G2 and F4?",
-    "clefs": "Clefs if not G2+F4",
-    "keySig": "Key Signature",
-    "timeSig": "Time Signature",
-    "notBipartite": "Sonata Not Bipartite",
-    "barCount": "Number of Bars (1st Half + 2nd Half)",
-    "compassHigh": "Highest-Pitch Note",
-    "compassLow": "Lowest-Pitch Note",
-    "hand": "Hand Signs",
-    "endSignsA": "Endings Signs (1st Half)",
-    "endSignsB": "Endings Signs (2nd Half)",
-    "repeatSigns": "Other Repeat Signs (Not Endings)",
-    "articulation": "Articulation Signs",
-    "dynamic": "Dynamic Signs",
-    "ornamentTrill": "Are there Trills /\\/\\?",
-    "ornamentPlus": "Are there +'s?",
-    "ornamentTr": "Are there Tr.?",
-    "ornamentAcciaccatura": "Any Acciaccatura (grace note)?",
-    "ornamentAppoggiatura": "Any Appoggiatura (barred/slashed grace note)?",
-    "ornamentTremulo": "Is there a Trem. or Tremulo?",
-    "ornamentOthers": "Other Ornamentations",
-    "otherIndications": "Other Indications"
-  },
-  "validation": {},
-  "commentFields": {
-    "notes": "Notes",
-    "comments": "Comments",
-    "summary": "SUMMARY"
-  },
-  "values": {
-    "defaultBarCount": 100,
-    "commentsRowHeight": 75
-  }
-}
-```
+use for created spreadsheets. The default values can be found
+[here](defaults/template_definitions.json).
 
 The `"masterSpreadsheet"` and `"volunteerSpreadsheet"` values define information
 for the master and volunteer spreadsheets respectively:
@@ -148,8 +77,8 @@ for the master and volunteer spreadsheets respectively:
 - `"folder"`: The id of the Google Drive folder to save the created
   spreadsheets. A value of `null` means the root folder.
   - A folder id can be found from the link in the address bar while the
-    folder is open: `https://drive.google.com/drive/folders/FOLDER_ID`. Be sure to
-    remove any unnecessary values after `?`, such as `?resourcekey=`.
+    folder is open: `https://drive.google.com/drive/folders/FOLDER_ID`. Be sure
+    to remove any unnecessary values after `?`, such as `?resourcekey=`.
 - `"title"`: The title of the spreadsheet, or the format of the title for
   `"volunteerSpreadsheet"`, with the format string `"{email}"` (at most once)
   representing the email of the volunteer.
