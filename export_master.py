@@ -9,9 +9,11 @@ import click
 from loguru import logger
 
 from ._shared import error
-from ._read_write import (
-    read_spreadsheets_index,
+from ._input_files import (
     read_template,
+)
+from ._output_files import (
+    read_spreadsheets_index,
     write_summary,
 )
 from ._sheets import (

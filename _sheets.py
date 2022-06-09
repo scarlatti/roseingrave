@@ -10,8 +10,8 @@ from loguru import logger
 
 from ._shared import error
 from ._read_write import (
-    _read_settings,
-    _get_path,
+    get_path,
+    read_settings,
 )
 
 # ======================================================================
@@ -44,17 +44,17 @@ def gspread_auth(force=False):
     def _error(msg):
         return error(msg, ERROR_RETURN)
 
-    success = _read_settings()
+    success = read_settings()
     if not success:
         return ERROR_RETURN
 
     logger.info('Setting up gspread authentication')
     try:
-        filepath = _get_path('credentials')
+        filepath = get_path('credentials')
     except FileNotFoundError as ex:
         return _error(ex)
 
-    auth_user_path = _get_path('authorized_user', must_exist=False)
+    auth_user_path = get_path('authorized_user', must_exist=False)
     # use `.resolve()` to turn this into the full path to avoid this:
     # https://github.com/burnash/gspread/issues/1056
     auth_user_path = auth_user_path.resolve()
@@ -153,6 +153,9 @@ def open_spreadsheet(gc, link):
 
     try:
         return True, gc.open_by_url(link)
+    except gspread.exceptions.NoValidUrlKeyFound:
+        error(f'Invalid spreadsheet link: "{link}"')
+        return False, None
     except gspread.exceptions.APIError as ex:
         args = ex.args[0]
 

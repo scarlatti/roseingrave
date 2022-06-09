@@ -9,10 +9,12 @@ import click
 from loguru import logger
 
 from ._shared import fail_on_warning
-from ._read_write import (
+from ._input_files import (
     read_template,
     read_piece_definitions,
     read_volunteer_definitions,
+)
+from ._output_files import (
     read_spreadsheets_index, write_spreadsheets_index,
 )
 from ._sheets import (
