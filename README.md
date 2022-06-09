@@ -243,6 +243,41 @@ Reauthenticate the credentials for your OAuth Client.
 
 No options.
 
+### `fix_input`
+
+Fixes input files.
+
+The `"template"` file is not supported because it can get very complex; some
+extra options may be due to user error without the user necessarily wanting to
+remove them. The user is suggested instead to heed the warnings whenever the
+template definitions file is read from in order to fix it.
+
+If a file is not included in `files` but an alternative path is given for it, it
+will be ignored.
+
+If there are unresolvable issues, displays warnings and does nothing.
+
+#### Arguments
+
+- `files` (optional, variadic): The files to fix, out of the following options.
+  If none given, all supported files will be fixed.
+  - `settings`: Remove unknown fields.
+  - `pieces`: Combine repeated pieces, keeping the first link found and the max
+    bar count found, including bar counts of sources. Combine repeated sources
+    for a piece, keeping the first link and the max bar count. Remove pieces
+    with no sources. Remove unknown fields.
+  - `volunteers`: Combine repeated emails, keeping the union of all sources
+    found, preserving order. Remove pieces not found in `"pieces"`. Remove
+    volunteers with no pieces. Remove unknown fields.
+  - `spreadsheetsIndex`: Sort all keys, with `"MASTER"` (if exists) at the top.
+    Remove spreadsheets that are not accessible through the user's account.
+
+#### Options
+
+- `-pd`: A filepath to replace `"pieces"`.
+- `-vd`: A filepath to replace `"volunteers"`.
+- `-si`: A filepath to replace `"spreadsheetsIndex"`.
+
 ### `create_sheet`
 
 Create volunteer spreadsheets.

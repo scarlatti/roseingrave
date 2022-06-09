@@ -8,6 +8,7 @@ The command-line interface for Roseingrave.
 import click
 
 from .reauth import reauth
+from .fix_input import fix_input
 from .create_sheet import create_sheet
 from .volunteer_summary import volunteer_summary
 from .piece_summary import piece_summary
@@ -36,6 +37,7 @@ class OrderedGroup(click.Group):
 cli = OrderedGroup(
     commands=[
         reauth,
+        fix_input,
         create_sheet,
         volunteer_summary,
         piece_summary,

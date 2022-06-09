@@ -59,3 +59,10 @@ class Volunteer:
         for piece_name in other.pieces:
             if piece_name not in self._pieces:
                 self._pieces[piece_name] = True
+
+    def to_json(self):
+        """Return a JSON reprsentation of this volunteer."""
+        return {
+            'email': self._email,
+            'pieces': list(self._pieces.keys()),
+        }

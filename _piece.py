@@ -123,7 +123,19 @@ class Source:
 
     def combine(self, other):
         """Combine this source with another by taking max bar count."""
+        if self._link != other.link:
+            logger.warning('Differing link: "{}"', other.link)
         self._bar_count = _max(self._bar_count, other.bar_count)
+
+    def to_json(self):
+        """Return a JSON representation of this source."""
+        values = {
+            'name': self._name,
+            'link': self._link,
+        }
+        if self._bar_count is not None:
+            values['barCount'] = self._bar_count
+        return values
 
     def hyperlink(self):
         """Return a string formula for the linked source."""
@@ -133,12 +145,14 @@ class Source:
 class Piece:
     """Piece class."""
 
-    def __init__(self, kwargs, template):
+    def __init__(self, kwargs, template=None):
         """Initialize a piece from a JSON dict.
 
         Args:
             kwargs (Dict): The JSON dict.
-            template (Dict): The template settings.
+            template (Optional[Dict]): The template settings.
+                If None, only represents a piece; cannot do anything
+                with it (such as create a sheet).
 
         Raises:
             ValueError: If any required key is not found.
@@ -153,6 +167,7 @@ class Piece:
         self._link = kwargs.get('link', None)
 
         self._sources = {}
+        self._had_bar_count = 'barCount' in kwargs
         self._bar_count = kwargs.get('barCount', None)
         for i, args in enumerate(kwargs['sources']):
             try:
@@ -164,6 +179,10 @@ class Piece:
             self._add_source(source)
 
         self._template = template
+
+        if self._template is None:
+            self._values = None
+            return
 
         # row 1 in `create_sheet()`
 
@@ -225,6 +244,14 @@ class Piece:
         """Combine this piece with another by combining all sources."""
         if self._link is None:
             self._link = other.link
+        elif other.link is None:
+            logger.warning('Missing link')
+        elif self._link != other.link:
+            logger.warning('Differing link: "{}"', other.link)
+
+        if other._had_bar_count:
+            self._had_bar_count = other._had_bar_count
+
         for source in other.sources:
             self._add_source(source)
 
@@ -236,6 +263,20 @@ class Piece:
         """Get the source by the given name, or None."""
         return self._sources.get(name, None)
 
+    def to_json(self):
+        """Return a JSON representation of this piece."""
+        values = {}
+        values['title'] = self._name
+        if self._link is not None:
+            values['link'] = self._link
+        if self._had_bar_count:
+            values['barCount'] = self.final_bar_count
+        values['sources'] = [
+            source.to_json()
+            for source in self._sources.values()
+        ]
+        return values
+
     def create_sheet(self, spreadsheet):
         """Create a sheet for this piece.
 
@@ -245,6 +286,12 @@ class Piece:
         Returns:
             gspread.Worksheet: The created sheet.
         """
+
+        if self._template is None:
+            raise RuntimeError(
+                f'cannot create sheet for piece "{self._name}": '
+                'no template given during creation'
+            )
 
         # add sheet
         sheet = spreadsheet.add_worksheet(self._name, 1, 1)
@@ -303,6 +350,12 @@ class Piece:
         Returns:
             gspread.Worksheet: The created sheet.
         """
+
+        if self._template is None:
+            raise RuntimeError(
+                f'cannot create sheet for piece "{self._name}": '
+                'no template given during creation'
+            )
 
         # add sheet
         sheet = spreadsheet.add_worksheet(self._name, 1, 1)
