@@ -139,7 +139,7 @@ def open_spreadsheet(gc, link):
             'PERMISSION_DENIED': (
                 f'Couldn\'t open spreadsheet "{link}" (permission '
                 'denied). Please make sure this spreadsheet is shared '
-                'with the you, or remove it from the spreadsheets '
+                'with you, or remove it from the spreadsheets '
                 'index file.'
             ),
         },
