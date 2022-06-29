@@ -173,12 +173,13 @@ def read_template(path=None, strict=False):
 def _piece_definitions(path, template, msg):
     """Read the piece definitions file.
     Returns whether successful, whether there were pieces with no
-    sources, and the pieces with at least one source.
+    sources, the pieces with at least one source, and the pieces that
+    only have supplemental sources.
     """
-    ERROR_RETURN = False, None, None
+    ERROR_RETURN = False, None, None, None
 
-    def _error(msg):
-        return error(msg, ERROR_RETURN)
+    def _error(msg, *args, **kwargs):
+        return error(msg.format(*args, **kwargs), ERROR_RETURN)
 
     success = read_settings()
     if not success:
@@ -198,7 +199,7 @@ def _piece_definitions(path, template, msg):
         try:
             piece = Piece(args, template)
         except ValueError as ex:
-            return _error(f'piece {i}: {ex}')
+            return _error('piece {}: {}', i, ex)
 
         name = piece.name
         if name in pieces:
@@ -209,15 +210,22 @@ def _piece_definitions(path, template, msg):
             pieces[name] = piece
 
     filtered = {}
+    only_supplemental = {}
     no_sources = False
     for title, piece in pieces.items():
+        if piece.only_supplemental:
+            logger.warning(
+                'piece "{}": only supplemental sources found', title
+            )
+            only_supplemental[title] = piece
+            continue
         if len(piece.sources) == 0:
             no_sources = True
-            _error(f'piece "{piece.name}": no sources found')
+            _error('piece "{}": no sources found', title)
             continue
         filtered[title] = piece
 
-    return True, no_sources, pieces
+    return True, no_sources, filtered, only_supplemental
 
 
 def read_piece_definitions(template,
@@ -227,6 +235,8 @@ def read_piece_definitions(template,
                            ):
     """Read the piece definitions file.
     Repeated pieces and sources will be combined.
+    All supplemental sources will be ignored, including pieces with only
+    supplemental sources.
 
     Args:
         template (Dict): The template settings.
@@ -247,7 +257,7 @@ def read_piece_definitions(template,
             and a mapping from piece names to piece objects.
     """
 
-    success, no_sources, pieces = _piece_definitions(
+    success, no_sources, pieces, _ = _piece_definitions(
         path, template, msg='Reading'
     )
     if not success or no_sources:
@@ -268,6 +278,8 @@ def read_piece_definitions(template,
 def fix_piece_definitions(path=None):
     """Fix the piece definitions file.
     Repeated pieces and sources will be combined.
+    Supplemental sources will be moved to the end.
+    Pieces with only supplemental sources will be moved to the end.
 
     Args:
         path (Optional[str]): A path to the piece definitions file to
@@ -280,16 +292,22 @@ def fix_piece_definitions(path=None):
     """
     ERROR_RETURN = False, None
 
-    success, _, pieces = _piece_definitions(path, None, msg='Fixing')
+    success, _, pieces, only_supplemental = _piece_definitions(
+        path, None, msg='Fixing'
+    )
     if not success:
         return ERROR_RETURN
+
+    # add supplemental pieces to end
+    for title, piece in only_supplemental.items():
+        pieces[title] = piece
 
     if len(pieces) == 0:
         error('No valid pieces to write back to piece definitions file')
         return ERROR_RETURN
 
     data = [
-        piece.to_json()
+        piece.to_json(include_supplemental=True)
         for piece in pieces.values()
     ]
     write_json(
@@ -304,6 +322,8 @@ def fix_piece_definitions(path=None):
 
 def _volunteer_definitions(pieces, path, msg):
     """Read the volunteer definitions file.
+    Ignores pieces that only had supplemental sources in the piece
+    definitions file.
     Returns whether successful, whether there were volunteers with no
     pieces, whether there were unknown pieces, and the volunteers with
     at least one piece.
@@ -332,7 +352,7 @@ def _volunteer_definitions(pieces, path, msg):
         try:
             volunteer = Volunteer(args, pieces)
         except ValueError as ex:
-            return _error(f'volunteer {i}: {ex}')
+            return _error('volunteer {}: {}', i, ex)
 
         email = volunteer.email
         if email in volunteers:
@@ -363,7 +383,8 @@ def _volunteer_definitions(pieces, path, msg):
 def read_volunteer_definitions(pieces, path=None, strict=False):
     """Read the volunteer definitions file.
     Repeated volunteer emails will be combined.
-    Unknown pieces will be ignored.
+    Unknown pieces and pieces with only supplemental sources will be
+    ignored.
 
     Args:
         pieces (Dict[str, Piece]): The known pieces.
@@ -392,6 +413,7 @@ def read_volunteer_definitions(pieces, path=None, strict=False):
 def fix_volunteer_definitions(pieces, path=None):
     """Fix the volunteer definitions file.
     Repeated volunteer emails will be combined.
+    Pieces with only supplemental sources will be removed.
 
     Args:
         pieces (Dict[str, Piece]): The known pieces.
@@ -400,11 +422,9 @@ def fix_volunteer_definitions(pieces, path=None):
             Default is None (use the settings file).
 
     Returns:
-        Tuple[bool, Dict[str, Volunteer]]:
-            Whether the fix was successful,
-            and a mapping from volunteer emails to volunteer objects.
+        bool: Whether the fix was successful.
     """
-    ERROR_RETURN = False, None
+    ERROR_RETURN = False
 
     success, _, _, volunteers = _volunteer_definitions(
         pieces, path, msg='Fixing'
@@ -428,4 +448,4 @@ def fix_volunteer_definitions(pieces, path=None):
         msg='fixed volunteer definitions'
     )
 
-    return True, pieces
+    return True

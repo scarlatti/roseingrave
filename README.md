@@ -273,13 +273,16 @@ If there are unresolvable issues, displays warnings and does nothing.
 
 #### Arguments
 
-- `files` (optional, variadic): The files to fix, out of the following options.
-  If none given, all supported files will be fixed.
+- `files` (optional, variadic): The files to fix, out of the following options
+  (type a list of the options). If none given, all supported files will be
+  fixed.
   - `settings`: Remove unknown fields.
   - `pieces`: Combine repeated pieces, keeping the first link found and the max
     bar count found, including bar counts of sources. Combine repeated sources
-    for a piece, keeping the first link and the max bar count. Remove pieces
-    with no sources. Remove unknown fields.
+    for a piece, keeping the first link and the max bar count. Move supplemental
+    sources to the end of the list. Move pieces with only supplemental sources
+    to the end of the list. Remove pieces with no sources. Remove unknown
+    fields.
   - `volunteers`: Combine repeated emails, keeping the union of all sources
     found, preserving order. Remove pieces not found in `"pieces"`. Remove
     volunteers with no pieces. Remove unknown fields.

@@ -134,15 +134,16 @@ class Source:
         if not self._is_supplemental:
             self._is_supplemental = other.is_supplemental
 
-    def to_json(self):
+    def to_json(self, include_supplemental=False):
         """Return a JSON representation of this source."""
-        # supplemental sources will never need to be represented in JSON
         values = {
             'name': self._name,
             'link': self._link,
         }
         if self._bar_count is not None:
             values['barCount'] = self._bar_count
+        if include_supplemental and self._is_supplemental:
+            values['supplemental'] = True
         return values
 
     def hyperlink(self):
@@ -185,6 +186,7 @@ class Piece:
                 raise
             sources.append(source)
 
+        self._only_supplemental = False
         self._sources = {}
         self._supplemental_sources = {}
         self._bar_count = None
@@ -237,6 +239,10 @@ class Piece:
             return self._template['values']['defaultBarCount']
         return self._bar_count
 
+    @property
+    def only_supplemental(self):
+        return self._only_supplemental
+
     def _add_sources(self, sources):
         """Add sources."""
 
@@ -266,6 +272,12 @@ class Piece:
             else:
                 self._sources[name] = source
 
+        # ignore this piece if there are only supplemental sources
+        self._only_supplemental = (
+            len(self._sources) == 0 and
+            len(self._supplemental_sources) > 0
+        )
+
         # re-calculate bar count with non-supplemental sources
         self._bar_count = self._initial_bar_count
         for source in self._sources.values():
@@ -294,7 +306,7 @@ class Piece:
         """Get the source by the given name, or None."""
         return self._sources.get(name, None)
 
-    def to_json(self):
+    def to_json(self, include_supplemental=False):
         """Return a JSON representation of this piece."""
         values = {}
         values['title'] = self._name
@@ -306,6 +318,11 @@ class Piece:
             source.to_json()
             for source in self._sources.values()
         ]
+        if include_supplemental:
+            values['sources'] += [
+                source.to_json(include_supplemental=True)
+                for source in self._supplemental_sources.values()
+            ]
         return values
 
     def _create_supplemental_sources_column(self, values, is_master):

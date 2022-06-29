@@ -52,9 +52,7 @@ def _fix_volunteers(pieces_error, pieces, pd=None, vd=None):
             definitions file.
 
     Returns:
-        Tuple[bool, Dict[str, Volunteer]:
-            Whether the fix was successful,
-            and a mapping from volunteer emails to volunteer objects.
+        bool: Whether the fix was successful.
     """
     ERROR_RETURN = False, None
 
@@ -62,6 +60,7 @@ def _fix_volunteers(pieces_error, pieces, pd=None, vd=None):
         error('Pieces file could not be read to fix "volunteers"')
         return ERROR_RETURN
 
+    # read the piece definitions (don't fix)
     if pieces is None:
         success, template = read_template()
         if not success:
