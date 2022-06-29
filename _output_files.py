@@ -2,6 +2,8 @@
 _output_files.py
 Handles output files.
 """
+# Logs all unexpected exceptions
+# pylint: disable=broad-except
 
 # ======================================================================
 

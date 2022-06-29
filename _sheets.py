@@ -2,9 +2,13 @@
 _sheets.py
 Shared methods for interacting with spreadsheets.
 """
+# Need to access error data, but pylint complains
+# Logs all unexpected exceptions
+# pylint: disable=invalid-sequence-index,broad-except
 
 # ======================================================================
 
+import google.auth.exceptions
 import gspread.exceptions
 from loguru import logger
 
@@ -62,15 +66,29 @@ def gspread_auth(force=False):
     if force and auth_user_path.exists():
         auth_user_path.unlink()
 
+    oauth_args = {
+        'credentials_filename': str(filepath),
+        'authorized_user_filename': str(auth_user_path),
+        'flow': gspread.auth.console_flow,
+    }
     try:
-        client = gspread.oauth(
-            credentials_filename=str(filepath),
-            authorized_user_filename=str(auth_user_path),
-            flow=gspread.auth.console_flow
-        )
+        client = gspread.oauth(**oauth_args)
     except Exception as ex:
         # incorrect authorization code
         return _error(ex)
+
+    # check if the OAuth Client is expired
+    try:
+        client.list_spreadsheet_files()
+    except google.auth.exceptions.RefreshError:
+        logger.warning('OAuth client credentials expired; refreshing')
+        auth_user_path.unlink()
+        # try again
+        try:
+            client = gspread.oauth(**oauth_args)
+        except Exception as ex:
+            # incorrect authorization code
+            return _error(ex)
 
     return True, client
 

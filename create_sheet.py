@@ -159,7 +159,7 @@ def populate_spreadsheets(gc, spreadsheets, volunteers, pieces, strict):
                 # copy from previously created
                 logger.debug('Copying sheet for piece "{}"', piece_name)
                 data = sheets[piece_name].copy_to(spreadsheet.id)
-                # update name to piece name
+                # update sheet title to piece name
                 sheet = spreadsheet.get_worksheet_by_id(data['sheetId'])
                 sheet.update_title(piece_name)
 

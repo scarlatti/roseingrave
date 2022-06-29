@@ -378,7 +378,8 @@ For most accurate summary, run the `piece_summary` command first.
 Requires `"pieceDataPath"`, `"template"`, and `"pieces"`. Reads the existing
 files in `"pieceDataPath"`. Outputs created file to `"summary"`.
 
-To create the output file, `"template"` and `"pieces"` will be used to determine the proper keys and bar counts for each source. Unknown pieces and sources will
+To create the output file, `"template"` and `"pieces"` will be used to determine
+the proper keys and bar counts for each source. Unknown pieces and sources will
 be skipped. Unknown or missing fields will raise warnings.
 
 #### Options
