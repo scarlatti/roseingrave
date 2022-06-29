@@ -308,6 +308,37 @@ class Piece:
         ]
         return values
 
+    def _create_supplemental_sources_column(self, values, is_master):
+        """Create the supplemental sources column(s) if needed.
+        Wraps to more columns if there are too many sources.
+        Return True if created.
+        """
+        if len(self._supplemental_sources) == 0:
+            return False
+
+        num_cols = len(values[0])
+        start_row = 2 if is_master else 1
+        # don't go into the comments row
+        wrap_row = len(values) - 1
+
+        values[0].append(
+            self._template['commentFields']['supplementalSources']
+        )
+
+        row_index = start_row
+        for source in self._supplemental_sources.values():
+            row = values[row_index]
+            if len(row) < num_cols:
+                row += [''] * (num_cols - len(row))
+            row.append(source.hyperlink())
+
+            row_index += 1
+            if row_index == wrap_row:
+                # wrap back to top
+                row_index = start_row
+
+        return True
+
     def create_sheet(self, spreadsheet):
         """Create a sheet for this piece.
 
@@ -339,7 +370,7 @@ class Piece:
 
         values = [
             row1,
-            # make copy of `self._values`
+            # use copy of `self._values`
             *[row[:] for row in self._values[0]],
             *[[i + 1] for i in range(bar_count)],
             *[row[:] for row in self._values[1]],
@@ -361,20 +392,9 @@ class Piece:
                 ['placeholderplaceholde'] * (len(values[0]) - 2)
             )
 
-        # supplemental sources
-        has_supplemental_col = False
-        if len(self._supplemental_sources) > 0:
-            has_supplemental_col = True
-            num_cols = len(values[0])
-            values[0].append(
-                self._template['commentFields']['supplementalSources']
-            )
-            for i, source in \
-                    enumerate(self._supplemental_sources.values()):
-                row = values[i + 1]
-                if len(row) < num_cols:
-                    row += [''] * (num_cols - len(row))
-                row.append(source.hyperlink())
+        has_supplemental_col = self._create_supplemental_sources_column(
+            values, is_master=False
+        )
 
         # put the values
         sheet.update(values, raw=False)
@@ -419,7 +439,7 @@ class Piece:
         values = [
             [_hyperlink(self._name, self._link)],
             ['Volunteer'],
-            # create copy of `self._values`
+            # use copy of `self._values`
             *[row[:] for row in self._values[0]],
             *[[i + 1] for i in range(bar_count)],
             *[row[:] for row in self._values[1]],
@@ -505,20 +525,9 @@ class Piece:
         if resize:
             values[blank_row1 - 1] = ['placeholderplaceholderplaceh']
 
-        # supplemental sources
-        has_supplemental_col = False
-        if len(self._supplemental_sources) > 0:
-            has_supplemental_col = True
-            num_cols = len(values[0])
-            values[0].append(
-                self._template['commentFields']['supplementalSources']
-            )
-            for i, source in \
-                    enumerate(self._supplemental_sources.values()):
-                row = values[i + 2]
-                if len(row) < num_cols:
-                    row += [''] * (num_cols - len(row))
-                row.append(source.hyperlink())
+        has_supplemental_col = self._create_supplemental_sources_column(
+            values, is_master=True
+        )
 
         # put the values
         sheet.update(values, raw=False)
@@ -920,8 +929,8 @@ def _format_sheet(spreadsheet, sheet, template,
     )
     if has_supplemental_col:
         column_widths.append(
-            # supplemental sources column: width of 150
-            ({'startIndex': notes_col, 'endIndex': notes_col + 1}, 150),
+            # supplemental sources column(s): width of 150
+            ({'startIndex': notes_col}, 150),
         )
     for pos, width in column_widths:
         requests.append({
