@@ -108,6 +108,7 @@ class Source:
         # only allow positive bar counts
         if self._bar_count is not None and self._bar_count <= 0:
             raise ValueError('bar count must be positive')
+        self._is_supplemental = kwargs.get('supplemental', False)
 
     @property
     def name(self):
@@ -121,14 +122,21 @@ class Source:
     def bar_count(self):
         return self._bar_count
 
+    @property
+    def is_supplemental(self):
+        return self._is_supplemental
+
     def combine(self, other):
         """Combine this source with another by taking max bar count."""
         if self._link != other.link:
             logger.warning('Differing link: "{}"', other.link)
         self._bar_count = _max(self._bar_count, other.bar_count)
+        if not self._is_supplemental:
+            self._is_supplemental = other.is_supplemental
 
     def to_json(self):
         """Return a JSON representation of this source."""
+        # supplemental sources will never need to be represented in JSON
         values = {
             'name': self._name,
             'link': self._link,
@@ -165,10 +173,9 @@ class Piece:
 
         self._name = kwargs['title']
         self._link = kwargs.get('link', None)
+        self._initial_bar_count = kwargs.get('barCount', None)
 
-        self._sources = {}
-        self._had_bar_count = 'barCount' in kwargs
-        self._bar_count = kwargs.get('barCount', None)
+        sources = []
         for i, args in enumerate(kwargs['sources']):
             try:
                 source = Source(args)
@@ -176,7 +183,12 @@ class Piece:
                 # re-raise the exception with added text
                 ex.args = (f'source {i}: ' + ex.args[0],) + ex.args[1]
                 raise
-            self._add_source(source)
+            sources.append(source)
+
+        self._sources = {}
+        self._supplemental_sources = {}
+        self._bar_count = None
+        self._add_sources(sources)
 
         self._template = template
 
@@ -225,20 +237,39 @@ class Piece:
             return self._template['values']['defaultBarCount']
         return self._bar_count
 
-    def _add_source(self, source):
-        """Add a source."""
+    def _add_sources(self, sources):
+        """Add sources."""
 
-        name = source.name
-        if name in self._sources:
-            logger.debug(
-                'Combining source "{}" in piece "{}"',
-                name, self._name
-            )
-            self._sources[name].combine(source)
-        else:
-            self._sources[name] = source
+        # add all sources
+        for source in sources:
+            name = source.name
+            if name in self._sources:
+                logger.debug(
+                    'Combining source "{}" in piece "{}"',
+                    name, self._name
+                )
+                existing_source = self._sources[name]
+                existing_source.combine(source)
+                if existing_source.is_supplemental:
+                    self._supplemental_sources[name] = existing_source
+                    self._sources.pop(name)
+                continue
+            if name in self._supplemental_sources:
+                logger.debug(
+                    'Combining source "{}" in piece "{}"',
+                    name, self._name
+                )
+                self._supplemental_sources[name].combine(source)
+                continue
+            if source.is_supplemental:
+                self._supplemental_sources[name] = source
+            else:
+                self._sources[name] = source
 
-        self._bar_count = _max(self._bar_count, source.bar_count)
+        # re-calculate bar count with non-supplemental sources
+        self._bar_count = self._initial_bar_count
+        for source in self._sources.values():
+            self._bar_count = _max(self._bar_count, source.bar_count)
 
     def combine(self, other):
         """Combine this piece with another by combining all sources."""
@@ -249,11 +280,11 @@ class Piece:
         elif self._link != other.link:
             logger.warning('Differing link: "{}"', other.link)
 
-        if other._had_bar_count:
-            self._had_bar_count = other._had_bar_count
+        if self._initial_bar_count is None:
+            # pylint: disable=protected-access
+            self._initial_bar_count = other._initial_bar_count
 
-        for source in other.sources:
-            self._add_source(source)
+        self._add_sources(other.sources)
 
     def has_source(self, name):
         """Check if this piece has a source with the given name."""
@@ -269,7 +300,7 @@ class Piece:
         values['title'] = self._name
         if self._link is not None:
             values['link'] = self._link
-        if self._had_bar_count:
+        if self._initial_bar_count is not None:
             values['barCount'] = self.final_bar_count
         values['sources'] = [
             source.to_json()
@@ -297,19 +328,24 @@ class Piece:
         sheet = spreadsheet.add_worksheet(self._name, 1, 1)
 
         # complete row 1
-        row1 = [
+        row1 = (
             [_hyperlink(self._name, self._link)] +
             [source.hyperlink() for source in self._sources.values()] +
             [self._template['commentFields']['notes']]
-        ]
+        )
 
         # proper bar count
         bar_count = self.final_bar_count
-        bars_section = [[i + 1] for i in range(bar_count)]
 
-        values = row1 + self._values[0] + bars_section + self._values[1]
+        values = [
+            row1,
+            # make copy of `self._values`
+            *[row[:] for row in self._values[0]],
+            *[[i + 1] for i in range(bar_count)],
+            *[row[:] for row in self._values[1]],
+        ]
 
-        notes_col = len(row1[0])
+        notes_col = len(values[0])
         blank_row1 = 1 + len(self._values[0])  # row 1 + headers
         blank_row2 = blank_row1 + bar_count + 1
         comments_row = blank_row2 + 1
@@ -322,8 +358,23 @@ class Piece:
                 # header column (202 pixels)
                 ['placeholderplaceholderplaceh'] +
                 # source columns (154 pixels)
-                ['placeholderplaceholde'] * (len(row1[0]) - 2)
+                ['placeholderplaceholde'] * (len(values[0]) - 2)
             )
+
+        # supplemental sources
+        has_supplemental_col = False
+        if len(self._supplemental_sources) > 0:
+            has_supplemental_col = True
+            num_cols = len(values[0])
+            values[0].append(
+                self._template['commentFields']['supplementalSources']
+            )
+            for i, source in \
+                    enumerate(self._supplemental_sources.values()):
+                row = values[i + 1]
+                if len(row) < num_cols:
+                    row += [''] * (num_cols - len(row))
+                row.append(source.hyperlink())
 
         # put the values
         sheet.update(values, raw=False)
@@ -331,12 +382,13 @@ class Piece:
         _format_sheet(
             spreadsheet, sheet, self._template,
             notes_col, blank_row1, blank_row2, comments_row,
-            resize=resize
+            resize=resize, has_supplemental_col=has_supplemental_col
         )
 
         if resize:
-            sheet.batch_clear([f'A{blank_row1}:{blank_row1}'])
-            values[blank_row1 - 1] = []
+            start = f'A{blank_row1}'
+            end = f'{_col_str(notes_col - 1)}{blank_row1}'
+            sheet.batch_clear([f'{start}:{end}'])
 
         return sheet
 
@@ -360,15 +412,17 @@ class Piece:
         # add sheet
         sheet = spreadsheet.add_worksheet(self._name, 1, 1)
 
+        # proper bar count
         bar_count = self.final_bar_count
 
         # finish headers
         values = [
             [_hyperlink(self._name, self._link)],
             ['Volunteer'],
-            *self._values[0],
+            # create copy of `self._values`
+            *[row[:] for row in self._values[0]],
             *[[i + 1] for i in range(bar_count)],
-            *self._values[1],
+            *[row[:] for row in self._values[1]],
         ]
 
         headers = tuple(self._template['metaDataFields'].keys())
@@ -451,18 +505,33 @@ class Piece:
         if resize:
             values[blank_row1 - 1] = ['placeholderplaceholderplaceh']
 
+        # supplemental sources
+        has_supplemental_col = False
+        if len(self._supplemental_sources) > 0:
+            has_supplemental_col = True
+            num_cols = len(values[0])
+            values[0].append(
+                self._template['commentFields']['supplementalSources']
+            )
+            for i, source in \
+                    enumerate(self._supplemental_sources.values()):
+                row = values[i + 2]
+                if len(row) < num_cols:
+                    row += [''] * (num_cols - len(row))
+                row.append(source.hyperlink())
+
         # put the values
         sheet.update(values, raw=False)
 
         _format_sheet(
             spreadsheet, sheet, self._template,
             notes_col, blank_row1, blank_row2, comments_row,
-            resize=resize, is_master=True, source_cols=source_cols
+            resize=resize, is_master=True, source_cols=source_cols,
+            has_supplemental_col=has_supplemental_col
         )
 
         if resize:
             sheet.batch_clear([f'A{blank_row1}'])
-            values[blank_row1 - 1] = []
 
         return sheet
 
@@ -471,6 +540,7 @@ class Piece:
         """Export piece data from a sheet.
         Assumes same format as a created sheet from
         `Piece.create_sheet()`.
+        Ignores the supplemental sources column if it exists.
 
         Args:
             sheet (gspread.Worksheet): The sheet.
@@ -485,24 +555,12 @@ class Piece:
         def _error(msg, *args, **kwargs):
             return error(msg.format(*args, **kwargs), ERROR_RETURN)
 
-        values = sheet.get_values(value_render_option='formula')
-
-        # row 1
-        row1 = values[0]
-
-        piece_link, piece_name = _parse_hyperlink(row1[0])
-        if piece_name is None:
-            piece_name = row1[0]
-
-        headers = tuple(template['metaDataFields'].keys())
-
-        headers_range = (1, 1 + len(headers))
-        headers_iter = list(zip(range(*headers_range), headers))
-
-        bars_range = (1 + len(headers) + 1, len(values) - 2)
-        bars_iter = list(range(*bars_range))
-
-        comments_row = len(values) - 1
+        (
+            values,
+            piece_link, piece_name,
+            headers_iter, bars_iter,
+            comments_row, notes_col,
+        ) = _export_helper(sheet, template, is_master=True)
 
         def export_column(col, include_comments=True):
             column = {}
@@ -517,7 +575,7 @@ class Piece:
             return column
 
         sources = []
-        for col in range(1, len(row1) - 1):
+        for col in range(1, notes_col):
             link, name = _parse_hyperlink(values[0][col])
             if link is None:
                 return _error(
@@ -533,7 +591,6 @@ class Piece:
             }
             sources.append(source)
 
-        notes_col = len(row1) - 1
         notes = export_column(notes_col, False)
 
         return True, {
@@ -563,30 +620,16 @@ class Piece:
         def _error(msg, *args, **kwargs):
             return error(msg.format(*args, **kwargs), ERROR_RETURN)
 
-        values = sheet.get_values(value_render_option='formula')
-
-        # row 1
-        row1 = values[0]
-
-        piece_link, piece_name = _parse_hyperlink(row1[0])
-        if piece_name is None:
-            piece_name = row1[0]
-
-        headers = tuple(template['metaDataFields'].keys())
-
-        headers_range = (2, 2 + len(headers))
-        headers_iter = list(zip(range(*headers_range), headers))
-        print('headers:', headers_iter)
-
-        bars_range = (2 + len(headers) + 1, len(values) - 2)
-        bars_iter = list(range(*bars_range))
-        print('bars:', bars_range)
-
-        comments_row = len(values) - 1
+        (
+            values,
+            piece_link, piece_name,
+            headers_iter, bars_iter,
+            comments_row, notes_col,
+        ) = _export_helper(sheet, template, is_master=True)
 
         sources = []
         curr_source = {}
-        for col in range(1, len(row1) - 1):
+        for col in range(1, notes_col):
             if values[0][col] != '':
                 # new source
                 link, name = _parse_hyperlink(values[0][col])
@@ -634,11 +677,15 @@ class Piece:
             for line in note_str.split('\n'):
                 if line == '':
                     continue
-                email, text = line.split(': ', 1)
-                note[email] = text
+                try:
+                    email, text = line.split(': ', 1)
+                    note[email] = text
+                except ValueError:
+                    logger.warning(
+                        'Note line has invalid format: {}', line
+                    )
             return note
 
-        notes_col = len(row1) - 1
         notes = {}
         for row, header in headers_iter:
             notes[header] = parse_note(values[row][notes_col])
@@ -659,7 +706,8 @@ class Piece:
 
 def _format_sheet(spreadsheet, sheet, template,
                   notes_col, blank_row1, blank_row2, comments_row,
-                  resize=False, is_master=False, source_cols=None
+                  resize=False, is_master=False, source_cols=None,
+                  has_supplemental_col=False
                   ):
     """Format a piece sheet."""
 
@@ -710,17 +758,13 @@ def _format_sheet(spreadsheet, sheet, template,
         },
         'fields': 'userEnteredFormat.textFormat.bold',
     }
-    centered_bolded = {
+    centered = {
         'cell': {
             'userEnteredFormat': {
                 'horizontalAlignment': 'CENTER',
-                'textFormat': {'bold': True},
             },
         },
-        'fields': ','.join((
-            'userEnteredFormat.horizontalAlignment',
-            'userEnteredFormat.textFormat.bold',
-        ))
+        'fields': 'userEnteredFormat.horizontalAlignment',
     }
     middle_bolded = {
         'cell': {
@@ -747,16 +791,13 @@ def _format_sheet(spreadsheet, sheet, template,
         ))
     }
     source_end_column = _col_str(notes_col - 1)
-    notes_column = _col_str(notes_col)
     range_formats = [
-        # piece name
-        ('A1', bolded),
+        # first row (piece name, sources, notes, possible supplemental)
+        ('A1:1', bolded),
         # headers
         (f'A2:A{blank_row1 - 1}', bolded),
         # sources
-        (f'B1:{source_end_column}1', centered_bolded),
-        # notes header
-        (f'{notes_column}1', bolded),
+        (f'B1:{source_end_column}1', centered),
         # comments header
         (f'A{comments_row}', middle_bolded),
         # comments row
@@ -863,7 +904,6 @@ def _format_sheet(spreadsheet, sheet, template,
         })
 
     column_widths = []
-
     if not resize:
         column_widths.append(
             # column 1: width 200
@@ -878,6 +918,11 @@ def _format_sheet(spreadsheet, sheet, template,
         # notes col: width 300
         ({'startIndex': notes_col - 1, 'endIndex': notes_col}, 300),
     )
+    if has_supplemental_col:
+        column_widths.append(
+            # supplemental sources column: width of 150
+            ({'startIndex': notes_col, 'endIndex': notes_col + 1}, 150),
+        )
     for pos, width in column_widths:
         requests.append({
             'updateDimensionProperties': {
@@ -1005,3 +1050,45 @@ def _format_sheet(spreadsheet, sheet, template,
 
     body = {'requests': requests}
     spreadsheet.batch_update(body)
+
+# ======================================================================
+
+
+def _export_helper(sheet, template, is_master):
+    """Export a sheet and get important helper values."""
+
+    values = sheet.get_values(value_render_option='formula')
+
+    # row 1
+    row1 = values[0]
+
+    piece_link, piece_name = _parse_hyperlink(row1[0])
+    if piece_name is None:
+        piece_name = row1[0]
+
+    headers = tuple(template['metaDataFields'].keys())
+
+    start_row = 2 if is_master else 1
+    headers_range = (start_row, start_row + len(headers))
+    headers_iter = list(zip(range(*headers_range), headers))
+
+    bars_range = (start_row + len(headers) + 1, len(values) - 2)
+    bars_iter = list(range(*bars_range))
+
+    comments_row = len(values) - 1
+
+    # skip over supplemental sources column
+    notes_col = len(row1) - 1
+    notes_col_title = template['commentFields']['notes']
+    while notes_col >= 0 and row1[notes_col] != notes_col_title:
+        notes_col -= 1
+    if notes_col == -1:
+        # not found, so assume it's the last column
+        notes_col = len(row1) - 1
+
+    return (
+        values,
+        piece_link, piece_name,
+        headers_iter, bars_iter,
+        comments_row, notes_col,
+    )

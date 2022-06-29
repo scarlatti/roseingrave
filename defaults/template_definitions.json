@@ -43,6 +43,7 @@
   "validation": {},
   "commentFields": {
     "notes": "Notes",
+    "supplementalSources": "Supplemental Sources",
     "comments": "Comments",
     "summary": "SUMMARY"
   },

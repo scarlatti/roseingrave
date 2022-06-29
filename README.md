@@ -76,12 +76,10 @@ for the master and volunteer spreadsheets respectively:
 
 - `"folder"`: The id of the Google Drive folder to save the created
   spreadsheets. A value of `null` means the root folder.
-  - A folder id can be found from the link in the address bar while the
-    folder is open: `https://drive.google.com/drive/folders/FOLDER_ID`. Be sure
-    to remove any unnecessary values after `?`, such as `?resourcekey=`.
-- `"title"`: The title of the spreadsheet, or the format of the title for
-  `"volunteerSpreadsheet"`, with the format string `"{email}"` (at most once)
-  representing the email of the volunteer.
+  - A folder id can be found from the link in the address bar while the folder
+    is open: `https://drive.google.com/drive/folders/FOLDER_ID`. Be sure to
+    remove any unnecessary values after `?`, such as `?resourcekey=`.
+- `"title"`: The title of the spreadsheet.
 - `"publicAccess"`: The public access of the spreadsheet. It can either be
   `null` (restricted), `"view"`, or `"edit"`. Unknown values will default to
   `null`.
@@ -92,6 +90,8 @@ for the master and volunteer spreadsheets respectively:
 
 For `"volunteerSpreadsheet"` specifically:
 
+- `"title"`: The format of the title, with the format string `"{email}"` (at
+  most once) representing the email of the volunteer.
 - `"shareWithVolunteer"`: Whether the spreadsheet should be shared with the
   volunteer's email.
 
@@ -99,9 +99,9 @@ Each field under `"metaDataFields"` defines the name of each header, which go in
 the rows above the bars section.
 
 Each field under `"validation"` defines specific values that any of the header
-fields can take. In particular, a header value may be a dropdown with a
-predefined list of choices or it may be a checkbox. To define these, use the
-following example format:
+fields can take. In particular, a value may be a dropdown with a predefined list
+of choices or it may be a checkbox. You must use the corresponding key in
+`"metaDataFields"`. To define these, use the following example format:
 
 ```json
 {
@@ -122,12 +122,14 @@ larger example.
 
 Each field under `"commentFields"` has the following meaning:
 
-- `"notes"`: The right-most column, where notes can be left on any of the
-  headers or bars.
-- `"comments"`: A single row below the bars section, where source-specific
-  comments may be left.
-- `"summary"`: In the master spreadsheet, a column for each source for a summary
-  of all the volunteer inputs.
+- `"notes"`: The title of the right-most column, where notes can be left on any
+  of the headers or bars.
+- `"supplementalSources"`: In a piece sheet, the title of a column after
+  `"notes"` that lists all the supplemental sources, if any.
+- `"comments"`: The title of a single row below the bars section, where
+  source-specific comments may be left.
+- `"summary"`: In the master spreadsheet, the title of a column for each source
+  for a summary of all the volunteer inputs.
 
 Each field under `"values"` has the following meaning:
 
@@ -146,6 +148,10 @@ piece can have an optional link and bar count. Each source requires a name and a
 link and also has an optional bar count. The resulting bar section for this
 piece will be the max of all the bar counts given, or a default if no bar counts
 are given.
+
+Sources may also be supplemental, meaning that they are listed in an additional
+column to the right of the `"notes"` column, but don't get their own column in
+piece sheets. They will also be ignored when exporting spreadsheets.
 
 The file should have the following format:
 
@@ -169,6 +175,11 @@ The file should have the following format:
       {
         "name": "sourceName2",
         "link": "sourceLink2"
+      },
+      {
+        "name": "supplementalSourceName",
+        "link": "supplementalSourceLink",
+        "supplemental": true
       }
     ]
   }
@@ -177,8 +188,9 @@ The file should have the following format:
 
 Pieces with repeated names will be treated as a single piece with the first link
 found and the combination of all their sources. Sources with repeated names will
-have the max bar count of the given bar counts. Sheets will be created with the
-order of the sources preserved.
+have the max bar count of the given bar counts and will be marked supplemental
+if any of its duplicates are supplemental. Sheets will be created with the order
+of the sources preserved.
 
 ### `"volunteers"`
 
