@@ -2,7 +2,9 @@
 
 Massively scalable musical source comparator.
 
-## Dependencies
+See [Getting Started](GettingStarted.md) for a starter guide.
+
+## Credentials
 
 These scripts interact with Google Sheets through the
 [`gspread` package](https://docs.gspread.org/en/latest/).
