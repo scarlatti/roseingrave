@@ -8,10 +8,16 @@ for detailed documentation.
 
 ## Installation
 
-Install the package through pip:
+Install the package through pip (recommended to do in a virtual environment):
 
 ```bash
 $ python3 -m pip install roseingrave
+```
+
+The package will be added as a top-level command:
+
+```bash
+$ roseingrave --help
 ```
 
 Create a folder to store all your input/ouput files. In this folder, place your
@@ -84,38 +90,38 @@ or by your own settings file.
 Based on your definition files, create the volunteer spreadsheets:
 
 ```bash
-$ python3 -m roseingrave create_sheet
+$ roseingrave create_sheet
 ```
 
 After volunteers have filled out their spreadsheets, export the data:
 
 ```bash
-$ python3 -m roseingrave volunteer_summary
+$ roseingrave volunteer_summary
 ```
 
 Extract the data for each piece:
 
 ```bash
-$ python3 -m roseingrave piece_summary
+$ roseingrave piece_summary
 ```
 
 Compile all the piece data into the summary file:
 
 ```bash
-$ python3 -m roseingrave compile_pieces
+$ roseingrave compile_pieces
 ```
 
 Create the master spreadsheets with the data from the summary file:
 
 ```bash
-$ python3 -m roseingrave import_master
+$ roseingrave import_master
 ```
 
 Fill out the summary columns as appropriate, then export the master spreadsheet
 into the summary file:
 
 ```bash
-$ python3 -m roseingrave export_master
+$ roseingrave export_master
 ```
 
 See the

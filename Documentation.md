@@ -227,6 +227,9 @@ master spreadsheet.
 
 ## Commands
 
+Run `roseingrave --help` or `roseingrave <command> --help` to see commands and
+their arguments and options on the command line.
+
 ### `reauth`
 
 Reauthenticate the credentials for your OAuth Client.
