@@ -581,12 +581,17 @@ class Piece:
         def _error(msg, *args, **kwargs):
             return error(msg.format(*args, **kwargs), ERROR_RETURN)
 
-        (
-            values,
-            piece_link, piece_name,
-            headers_iter, bars_iter,
-            comments_row, notes_col,
-        ) = _export_helper(sheet, template, is_master=True)
+        try:
+            (
+                values,
+                piece_link, piece_name,
+                headers_iter, bars_iter,
+                comments_row, notes_col,
+            ) = _export_helper(sheet, template, is_master=False)
+        except Exception as e:  # pylint: disable=broad-except
+            return _error(
+                'Error while exporting sheet "{}": {}', sheet.title, e
+            )
 
         def export_column(col, include_comments=True):
             column = {}
@@ -646,12 +651,18 @@ class Piece:
         def _error(msg, *args, **kwargs):
             return error(msg.format(*args, **kwargs), ERROR_RETURN)
 
-        (
-            values,
-            piece_link, piece_name,
-            headers_iter, bars_iter,
-            comments_row, notes_col,
-        ) = _export_helper(sheet, template, is_master=True)
+        try:
+            (
+                values,
+                piece_link, piece_name,
+                headers_iter, bars_iter,
+                comments_row, notes_col,
+            ) = _export_helper(sheet, template, is_master=True)
+        except Exception as e:  # pylint: disable=broad-except
+            return _error(
+                'Error while exporting master sheet "{}": {}',
+                sheet.title, e
+            )
 
         sources = []
         curr_source = {}

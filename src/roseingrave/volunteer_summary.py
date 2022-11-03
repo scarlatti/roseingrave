@@ -54,7 +54,7 @@ def export_spreadsheet(gc, email, link, template):
     for sheet in spreadsheet.worksheets():
         success, piece_data = Piece.export_sheet(sheet, template)
         if not success:
-            return
+            continue
         data.append(piece_data)
 
     return True, data
