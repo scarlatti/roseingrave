@@ -9,7 +9,7 @@ Shared methods for interacting with spreadsheets.
 # ======================================================================
 
 import google.auth.exceptions
-import gspread.exceptions
+import gspread
 from loguru import logger
 
 from ._shared import error
@@ -70,6 +70,7 @@ def gspread_auth(force=False):
         'credentials_filename': str(filepath),
         'authorized_user_filename': str(auth_user_path),
         'flow': gspread.auth.console_flow,
+        'client_factory': gspread.client.BackoffClient,
     }
     try:
         client = gspread.oauth(**oauth_args)
