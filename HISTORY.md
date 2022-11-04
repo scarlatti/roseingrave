@@ -1,6 +1,6 @@
 # Version History
 
-## v0.9.2
+## v0.9.2 (not yet released)
 
 - Protect first row and column of non-master sheets so volunteers do not
   accidentally edit them (https://github.com/josephlou5/roseingrave/issues/13)
