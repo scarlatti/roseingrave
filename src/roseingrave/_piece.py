@@ -1085,6 +1085,27 @@ def _format_sheet(spreadsheet, sheet, template,
             }
         })
 
+    # protect the first row and column of non-master sheets
+    if not is_master:
+        requests.append({
+            'addProtectedRange': {
+                'protectedRange': {
+                    # protect entire sheet
+                    'range': {'sheetId': sheet_id},
+                    'description': '',
+                    'warningOnly': False,
+                    'unprotectedRanges': [
+                        {
+                            # exclude where the volunteer will edit
+                            'sheetId': sheet_id,
+                            'startRowIndex': header_end,
+                            'startColumnIndex': 1,
+                        },
+                    ],
+                }
+            }
+        })
+
     body = {'requests': requests}
     spreadsheet.batch_update(body)
 
