@@ -21,7 +21,7 @@ license = "LGPL-3.0-or-later"
 name = "roseingrave"
 readme = "README.md"
 repository = "https://github.com/josephlou5/roseingrave"
-version = "0.9.1"
+version = "0.10.0"
 
 [tool.poetry.scripts]
 roseingrave = "roseingrave.__main__:cli"
