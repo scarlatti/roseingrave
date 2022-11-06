@@ -11,6 +11,8 @@ from loguru import logger
 from ._shared import fail_on_warning, error
 from ._input_files import (
     read_template,
+    read_piece_definitions,
+    read_volunteer_definitions,
 )
 from ._output_files import (
     read_spreadsheets_index,
@@ -29,7 +31,7 @@ __all__ = ('volunteer_summary',)
 # ======================================================================
 
 
-def export_spreadsheet(gc, email, link, template):
+def export_spreadsheet(gc, email, link, template, volunteer=None):
     """Export a volunteer's spreadsheet.
 
     Args:
@@ -37,6 +39,9 @@ def export_spreadsheet(gc, email, link, template):
         email (str): The volunteer email.
         link (str): The spreadsheet link.
         template (Dict): The template settings.
+        volunteer (Optional[Volunteer]): The volunteer. If given, only
+            export the pieces belonging to this volunteer.
+            Default is None.
 
     Returns:
         Tuple[bool, List[Dict]]: Whether the export was successful,
@@ -46,12 +51,24 @@ def export_spreadsheet(gc, email, link, template):
 
     logger.debug('Working on volunteer "{}"', email)
 
+    volunteer_pieces = None
+    if volunteer is not None:
+        volunteer_pieces = set(volunteer.pieces)
+
     success, spreadsheet = open_spreadsheet(gc, link)
     if not success:
         return ERROR_RETURN
 
     data = []
     for sheet in spreadsheet.worksheets():
+        if volunteer_pieces is not None:
+            if sheet.title not in volunteer_pieces:
+                logger.warning(
+                    'Volunteer "{}" does not have piece "{}" in piece '
+                    'definitions file: skipping',
+                    email, sheet.title
+                )
+                continue
         success, piece_data = Piece.export_sheet(sheet, template)
         if not success:
             continue
@@ -76,6 +93,14 @@ def export_spreadsheet(gc, email, link, template):
     help='A filepath to replace the template definitions file.'
 )
 @click.option(
+    '-pd', type=str,
+    help='A filepath to replace the piece definitions file.'
+)
+@click.option(
+    '-vd', type=str,
+    help='A filepath to replace the volunteer definitions file.'
+)
+@click.option(
     '-vdp', type=str,
     help=(
         'A filepath to replace the volunteer data path file. '
@@ -83,10 +108,21 @@ def export_spreadsheet(gc, email, link, template):
     )
 )
 @click.option(
+    '-ek', '--export-known-only',
+    is_flag=True, default=False, flag_value=True,
+    help=(
+        'Export only the volunteers and pieces that appear in the '
+        'definition files. Requires piece definitions file and '
+        'volunteer definitions file. Default is False.'
+    )
+)
+@click.option(
     '--strict', is_flag=True, default=False, flag_value=True,
     help='Fail on warnings instead of only displaying them.'
 )
-def volunteer_summary(emails, si, td, vdp, strict):
+def volunteer_summary(
+    emails, si, td, pd, vd, vdp, export_known_only, strict
+):
     """Export volunteer JSON data files.
 
     Args:
@@ -94,8 +130,15 @@ def volunteer_summary(emails, si, td, vdp, strict):
             none given, exports data for all volunteers.
         si (str): A filepath to replace the spreadsheets index file.
         td (str): A filepath to replace the template definitions file.
+        pd (str): A filepath to replace the piece definitions file.
+        vd (str): A filepath to replace the volunteer definitions file.
         vdp (str): A filepath to replace the volunteer data path file.
             Must include "{email}" exactly once.
+        export_known_only (bool): Whether to export only the volunteers
+            and pieces that appear in the definition files.
+            Requires piece definitions file and volunteer definitions
+            file.
+            Default is False.
         strict (bool): Whether to fail on warnings instead of only
             displaying them.
             Default is False.
@@ -138,14 +181,36 @@ def volunteer_summary(emails, si, td, vdp, strict):
         logger.info('No volunteers to export data for')
         return
 
+    if export_known_only:
+        success, pieces = read_piece_definitions(template, pd)
+        if not success:
+            return
+
+        success, volunteers = read_volunteer_definitions(
+            pieces, vd, strict
+        )
+        if not success:
+            return
+    else:
+        volunteers = None
+
     # volunteer email -> data
     data = {}
 
     # export spreadsheets
     logger.info('Exporting data from spreadsheets')
     for email, link in spreadsheets.items():
+        volunteer = None
+        if volunteers is not None:
+            if email not in volunteers:
+                logger.warning(
+                    'Unknown volunteer "{}": skipping spreadsheet',
+                    email
+                )
+                continue
+            volunteer = volunteers[email]
         success, volunteer_data = export_spreadsheet(
-            gc, email, link, template
+            gc, email, link, template, volunteer
         )
         if strict and not success:
             fail_on_warning()

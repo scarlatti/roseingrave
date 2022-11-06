@@ -305,7 +305,8 @@ If any volunteers already exist in `"spreadsheetsIndex"`, they will be skipped.
 
 Export volunteer JSON data files.
 
-Requires `"spreadsheetsIndex"` and `"template"`. Outputs created data files to
+Requires `"spreadsheetsIndex"` and `"template"`. If `--export-known-only` is
+given, requires `"pieces"` and `"volunteers"`. Outputs created data files to
 `"volunteerDataPath"`, replacing existing files.
 
 If the spreadsheets don't match `"template"`, there is undefined behavior. For
@@ -320,8 +321,13 @@ proper exported data, ensure that the spreadsheets have the correct format.
 
 - `-si`: A filepath to replace `"spreadsheetsIndex"`.
 - `-td`: A filepath to replace `"template"`.
+- `-pd`: A filepath to replace `"pieces"`.
+- `-vd`: A filepath to replace `"volunteers"`.
 - `-vdp`: A filepath to replace `"volunteerDataPath"`. Must include `"{email}"`
   exactly once.
+- `-ek`/`--export-known-only` (flag): Export only the volunteers and pieces that
+  appear in the definition files. Requires `"pieces"` and `"volunteers"`.
+  Default is False.
 - `--strict` (flag): Fail on warnings instead of only displaying them.
 
 ### `piece_summary`
@@ -402,7 +408,8 @@ outputs the spreadsheet link to `"spreadsheetsIndex"`.
 
 Export the master spreadsheet.
 
-Requires `"spreadsheetsIndex"` and `"template"`. Outputs data to `"summary"`.
+Requires `"spreadsheetsIndex"` and `"template"`. If `--export-known-only` is
+given, requires `"pieces"` and `"volunteers"`. Outputs data to `"summary"`.
 
 If the spreadsheet doesn't match `"template"`, there is undefined behavior. For
 proper exported data, ensure that the spreadsheet has the correct format.
@@ -411,5 +418,12 @@ proper exported data, ensure that the spreadsheet has the correct format.
 
 - `-si`: A filepath to replace `"spreadsheetsIndex"`.
 - `-td`: A filepath to replace `"template"`.
+- `-pd`: A filepath to replace `"pieces"`.
+- `-vd`: A filepath to replace `"volunteers"`.
+- `-vdp`: A filepath to replace `"volunteerDataPath"`. Must include `"{email}"`
+  exactly once.
 - `-s`: A filepath to replace `"summary"`.
+- `-ek`/`--export-known-only` (flag): Export only the volunteers and pieces that
+  appear in the definition files. Requires `"pieces"` and `"volunteers"`.
+  Default is False.
 - `--strict` (flag): Fail on warnings instead of only displaying them.
