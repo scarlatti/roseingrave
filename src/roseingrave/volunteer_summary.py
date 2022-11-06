@@ -94,7 +94,7 @@ def export_spreadsheet(gc, email, link, template, volunteer=None):
 )
 @click.option(
     '-pd', type=str,
-    help='A filepath to replace the piece definitions file. '
+    help='A filepath to replace the piece definitions file.'
 )
 @click.option(
     '-vd', type=str,
