@@ -306,7 +306,7 @@ If any volunteers already exist in `"spreadsheetsIndex"`, they will be skipped.
 Export volunteer JSON data files.
 
 Requires `"spreadsheetsIndex"` and `"template"`. If `--export-known-only` is
-given, requires `"pieces"` and `"volunteers"` Outputs created data files to
+given, requires `"pieces"` and `"volunteers"`. Outputs created data files to
 `"volunteerDataPath"`, replacing existing files.
 
 If the spreadsheets don't match `"template"`, there is undefined behavior. For
