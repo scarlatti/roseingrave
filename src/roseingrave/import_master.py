@@ -144,6 +144,10 @@ def import_master(create, td, pd, summary_path, si, strict):
 
     # check if need to create spreadsheet
     if MASTER_KEY not in spreadsheets:
+        logger.debug(
+            'Master spreadsheet link not found in spreadsheets index '
+            'file: creating new'
+        )
         create = True
 
     # create or open spreadsheet

@@ -1,5 +1,11 @@
 # Version History
 
+## v0.10.1
+
+- Display error for a missing spreadsheets index file for commands that must
+  read from it (`volunteer_summary` and `export_master`)
+  (https://github.com/josephlou5/roseingrave/issues/14)
+
 ## v0.10.0 (2022-11-06)
 
 _Current version_

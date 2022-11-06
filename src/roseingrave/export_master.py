@@ -130,7 +130,7 @@ def export_master(
     if not success:
         return
 
-    success, spreadsheets = read_spreadsheets_index(si)
+    success, spreadsheets = read_spreadsheets_index(si, must_exist=True)
     if not success:
         return
 

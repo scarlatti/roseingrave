@@ -153,7 +153,7 @@ def volunteer_summary(
     if not success:
         return
 
-    success, spreadsheets = read_spreadsheets_index(si)
+    success, spreadsheets = read_spreadsheets_index(si, must_exist=True)
     if not success:
         return
     # remove master spreadsheet

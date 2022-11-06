@@ -39,13 +39,16 @@ __all__ = (
 # ======================================================================
 
 
-def read_spreadsheets_index(path=None):
+def read_spreadsheets_index(path=None, must_exist=False):
     """Read the spreadsheets index file.
 
     Args:
         path (Optional[str]): A path to the spreadsheets index file to
             use instead.
             Default is None (use the settings file).
+        must_exist (bool): Whether the spreadsheets index file must
+            exist.
+            Default is False.
 
     Returns:
         Tuple[bool, Dict[str, str]]: Whether the read was successful,
@@ -62,7 +65,10 @@ def read_spreadsheets_index(path=None):
 
     try:
         contents = read_json('spreadsheetsIndex', path)
-    except FileNotFoundError:
+    except FileNotFoundError as ex:
+        if must_exist:
+            logger.error(ex)
+            return ERROR_RETURN
         contents = {}
     except ValueError as ex:
         error(ex)
