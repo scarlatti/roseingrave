@@ -1,6 +1,6 @@
 # Version History
 
-## v0.10.1
+## v0.10.1 (2023-01-23)
 
 - Display error for a missing spreadsheets index file for commands that must
   read from it (`volunteer_summary` and `export_master`)
