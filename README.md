@@ -72,8 +72,8 @@ To enable the OAuth Client, follow these steps:
 If you've never authorized the app or if your authorization has expired, you'll
 be given a link in the console for you to visit in order to refresh or create
 an authorization token. Go to the url, select your email, click "Continue",
-allow access to your Drive files and Sheets spreadsheets, click "Continue", copy
-the authorization code on the final page, and paste it back into the console.
+allow access to your Drive files and Sheets spreadsheets, and click "Continue".
+This should authenticate you, and the command should continue running.
 
 Once the authorization is successful, the `authorized_user.json` file will be
 created in the same directory as `"credentials"`.
