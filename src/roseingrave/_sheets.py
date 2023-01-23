@@ -10,6 +10,7 @@ Shared methods for interacting with spreadsheets.
 
 import google.auth.exceptions
 import gspread
+from google_auth_oauthlib.flow import InstalledAppFlow
 from loguru import logger
 
 from ._shared import error
@@ -30,6 +31,18 @@ __all__ = (
 )
 
 # ======================================================================
+
+def _local_server_flow(client_config, scopes, port=0):
+    """Runs an OAuth flow exactly like
+    `gspread.auth.local_server_flow()`, except it does not force opening
+    the user's browser.
+
+    I don't like things that open browsers without warning, and a
+    message will be displayed with the authentication URL, so it will
+    still work.
+    """
+    flow = InstalledAppFlow.from_client_config(client_config, scopes)
+    return flow.run_local_server(port=port, open_browser=False)
 
 
 def gspread_auth(force=False):
@@ -69,7 +82,7 @@ def gspread_auth(force=False):
     oauth_args = {
         'credentials_filename': str(filepath),
         'authorized_user_filename': str(auth_user_path),
-        'flow': gspread.auth.console_flow,
+        'flow': _local_server_flow,
         'client_factory': gspread.client.BackoffClient,
     }
     try:
