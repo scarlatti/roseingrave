@@ -8,49 +8,49 @@ Compile all piece JSON data flies into a single file.
 import click
 from loguru import logger
 
+from ._input_files import read_piece_definitions, read_template
+from ._output_files import read_piece_data, write_summary
 from ._shared import error
-from ._input_files import (
-    read_template,
-    read_piece_definitions,
-)
-from ._output_files import (
-    read_piece_data,
-    write_summary,
-)
 
 # ======================================================================
 
-__all__ = ('compile_pieces',)
+__all__ = ("compile_pieces",)
 
 # ======================================================================
 
 
 @click.command(
-    'compile_pieces',
-    help='Compile all piece JSON data flies into a single file.'
+    "compile_pieces",
+    help="Compile all piece JSON data flies into a single file.",
 )
 @click.option(
-    '-td', type=str,
-    help='A filepath to replace the template definitions file.'
+    "-td",
+    type=str,
+    help="A filepath to replace the template definitions file.",
 )
 @click.option(
-    '-pd', type=str,
-    help='A filepath to replace the piece definitions file.'
+    "-pd", type=str, help="A filepath to replace the piece definitions file."
 )
 @click.option(
-    '-pdp', type=str,
+    "-pdp",
+    type=str,
     help=(
-        'A filepath to replace the piece data path file. '
+        "A filepath to replace the piece data path file. "
         'Must include "{piece}".'
-    )
+    ),
 )
 @click.option(
-    '-s', 'summary_path', type=str,
-    help='A filepath to replace the summary file.'
+    "-s",
+    "summary_path",
+    type=str,
+    help="A filepath to replace the summary file.",
 )
 @click.option(
-    '--strict', is_flag=True, default=False, flag_value=True,
-    help='Fail on warnings instead of only displaying them.'
+    "--strict",
+    is_flag=True,
+    default=False,
+    flag_value=True,
+    help="Fail on warnings instead of only displaying them.",
 )
 def compile_pieces(td, pd, pdp, summary_path, strict):
     """Compile all piece JSON data flies into a single file.
@@ -67,13 +67,12 @@ def compile_pieces(td, pd, pdp, summary_path, strict):
     """
 
     # validate args
-    if pdp is not None and pdp.count('{piece}') != 1:
+    if pdp is not None and pdp.count("{piece}") != 1:
         error('`pdp` must include "{piece}" exactly once')
         return
 
     logger.warning(
-        'For most accurate summary, run the `piece_summary` command '
-        'first.'
+        "For most accurate summary, run the `piece_summary` command first."
     )
 
     success, template = read_template(td, strict)
@@ -92,13 +91,13 @@ def compile_pieces(td, pd, pdp, summary_path, strict):
     for title, piece in pieces_data.items():
         piece_obj = pieces[title]
         # turn sources into list
-        piece['sources'] = list(piece['sources'].values())
-        for source in piece['sources']:
-            source['summary'] = piece_obj.make_default()
+        piece["sources"] = list(piece["sources"].values())
+        for source in piece["sources"]:
+            source["summary"] = piece_obj.make_default()
         summary.append(piece)
 
     success = write_summary(summary, summary_path)
     if not success:
         return
 
-    logger.info('Done')
+    logger.info("Done")

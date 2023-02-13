@@ -14,7 +14,8 @@ from ._read_write import (
 )
 from ._input_files import (
     read_template,
-    read_piece_definitions, fix_piece_definitions,
+    read_piece_definitions,
+    fix_piece_definitions,
     fix_volunteer_definitions,
 )
 from ._output_files import (
@@ -23,16 +24,17 @@ from ._output_files import (
 
 # ======================================================================
 
-__all__ = ('fix_input',)
+__all__ = ("fix_input",)
 
 # ======================================================================
 
 FILES = {
-    key: True for key in (
-        'settings',
-        'pieces',
-        'volunteers',
-        'spreadsheetsIndex',
+    key: True
+    for key in (
+        "settings",
+        "pieces",
+        "volunteers",
+        "spreadsheetsIndex",
     )
 }
 
@@ -71,25 +73,22 @@ def _fix_volunteers(pieces_error, pieces, pd=None, vd=None):
 
     return fix_volunteer_definitions(pieces, vd)
 
+
 # ======================================================================
 
 
-@click.command(
-    'fix_input',
-    help='Fixes input files.'
-)
-@click.argument('files', type=str, nargs=-1)
+@click.command("fix_input", help="Fixes input files.")
+@click.argument("files", type=str, nargs=-1)
 @click.option(
-    '-pd', type=str,
-    help='A filepath to replace the piece definitions file.'
+    "-pd", type=str, help="A filepath to replace the piece definitions file."
 )
 @click.option(
-    '-vd', type=str,
-    help='A filepath to replace the volunteer definitions file.'
+    "-vd",
+    type=str,
+    help="A filepath to replace the volunteer definitions file.",
 )
 @click.option(
-    '-si', type=str,
-    help='A filepath to replace the spreadsheets index file.'
+    "-si", type=str, help="A filepath to replace the spreadsheets index file."
 )
 def fix_input(files, pd, vd, si):
     """Fixes input files.
@@ -115,22 +114,22 @@ def fix_input(files, pd, vd, si):
         files = filtered
 
     if len(files) == 0:
-        logger.info('No files to fix')
+        logger.info("No files to fix")
         return
 
     # fix settings
-    if 'settings' in files:
+    if "settings" in files:
         _ = fix_settings()
 
     # fix pieces
     pieces_error, pieces = False, None
-    if 'pieces' in files:
+    if "pieces" in files:
         pieces_error, pieces = fix_piece_definitions(pd)
 
     # fix volunteers
-    if 'volunteers' in files:
+    if "volunteers" in files:
         _ = _fix_volunteers(pieces_error, pieces, pd, vd)
 
     # fix spreadsheets
-    if 'spreadsheetsIndex' in files:
+    if "spreadsheetsIndex" in files:
         _ = fix_spreadsheets_index(si)

@@ -15,14 +15,17 @@ from ._shared import error
 # ======================================================================
 
 __all__ = (
-    'get_path',
-    'read_json', 'write_json', 'write_json_file',
-    'read_settings', 'fix_settings',
+    "get_path",
+    "read_json",
+    "write_json",
+    "write_json_file",
+    "read_settings",
+    "fix_settings",
 )
 
 # ======================================================================
 
-SETTINGS_FILE = 'roseingrave.json'
+SETTINGS_FILE = "roseingrave.json"
 
 # every time the script is run, this gets populated for that run
 # becomes flattened version of the file
@@ -33,9 +36,10 @@ SETTINGS = {}
 
 def _read_default(file):
     """Read a default configuration from the "defaults" directory."""
-    filepath = Path(Path(__file__).parent, 'defaults', file)
-    contents = filepath.read_text(encoding='utf-8')
+    filepath = Path(Path(__file__).parent, "defaults", file)
+    contents = filepath.read_text(encoding="utf-8")
     return json.loads(contents)
+
 
 # ======================================================================
 
@@ -69,7 +73,7 @@ def get_path(key, path=None, must_exist=True, create_dirs=False):
         path = SETTINGS[key]
     else:
         path = [path]
-    if not path[-1].endswith('.json'):
+    if not path[-1].endswith(".json"):
         raise ValueError('path must have extension ".json"')
 
     filepath = Path(*path)
@@ -78,6 +82,7 @@ def get_path(key, path=None, must_exist=True, create_dirs=False):
     if create_dirs:
         filepath.parent.mkdir(parents=True, exist_ok=True)
     return filepath
+
 
 # ======================================================================
 
@@ -98,14 +103,14 @@ def read_json(key, path=None):
         Union[Dict, List]: The contents of the JSON file.
     """
     filepath = get_path(key, path)
-    contents = filepath.read_text(encoding='utf-8')
+    contents = filepath.read_text(encoding="utf-8")
     return json.loads(contents)
 
 
 def _write(filepath, data, msg):
     if msg is not None:
         logger.info('Writing {} to "{}"', msg, filepath)
-    filepath.write_text(json.dumps(data, indent=2), encoding='utf-8')
+    filepath.write_text(json.dumps(data, indent=2), encoding="utf-8")
 
 
 def write_json(key, data, path=None, msg=None):
@@ -146,6 +151,7 @@ def write_json_file(path, data, msg=None):
     filepath.parent.mkdir(parents=True, exist_ok=True)
     _write(filepath, data, msg)
 
+
 # ======================================================================
 
 
@@ -163,35 +169,35 @@ def _settings(msg, clear=False, must_exist=False):
     if len(SETTINGS) > 0:
         return True, SETTINGS
 
-    logger.info('{} settings file', msg)
+    logger.info("{} settings file", msg)
 
     try:
-        raw_values = read_json('', SETTINGS_FILE)
+        raw_values = read_json("", SETTINGS_FILE)
     except FileNotFoundError:
         if must_exist:
-            _error('No settings file found to fix')
+            _error("No settings file found to fix")
             return ERROR_RETURN
         # no settings file, so just use all defaults
         raw_values = {}
 
     # add defaults if missing
-    defaults = _read_default('roseingrave.json')
+    defaults = _read_default("roseingrave.json")
     fixed = {}
 
     # credentials
-    if 'credentials' in raw_values:
-        fixed['credentials'] = raw_values['credentials']
-        path = raw_values['credentials']
+    if "credentials" in raw_values:
+        fixed["credentials"] = raw_values["credentials"]
+        path = raw_values["credentials"]
     else:
-        path = defaults['credentials']
+        path = defaults["credentials"]
     if isinstance(path, str):  # turn into list if a str
         path = [path]
-    SETTINGS['credentials'] = path
-    SETTINGS['authorized_user'] = path[:-1] + ['authorized_user.json']
+    SETTINGS["credentials"] = path
+    SETTINGS["authorized_user"] = path[:-1] + ["authorized_user.json"]
 
     for level, level_defaults in defaults.items():
         # already took care of credentials
-        if level in ('credentials',):
+        if level in ("credentials",):
             continue
         if level in raw_values:
             fixed[level] = {}
@@ -212,17 +218,14 @@ def _settings(msg, clear=False, must_exist=False):
     # validate values
     invalid = False
     for key, value in SETTINGS.items():
-        if not value[-1].endswith('.json'):
+        if not value[-1].endswith(".json"):
             invalid = True
             _error('"{}" must be a ".json" file', key)
     for key, search in (
-        ('volunteerDataPath', '{email}'),
-        ('pieceDataPath', '{piece}'),
+        ("volunteerDataPath", "{email}"),
+        ("pieceDataPath", "{piece}"),
     ):
-        count = sum(
-            path_piece.count(search)
-            for path_piece in SETTINGS[key]
-        )
+        count = sum(path_piece.count(search) for path_piece in SETTINGS[key])
         if count != 1:
             invalid = True
             _error('"{}" must have "{}" exactly once', key, search)
@@ -238,7 +241,7 @@ def read_settings():
     Returns:
         bool: Whether the read was successful.
     """
-    success, _ = _settings('Reading')
+    success, _ = _settings("Reading")
     return success
 
 
@@ -248,13 +251,10 @@ def fix_settings():
     Returns:
         bool: Whether the fix was successful.
     """
-    success, fixed = _settings('Fixing', clear=True, must_exist=True)
+    success, fixed = _settings("Fixing", clear=True, must_exist=True)
     if not success:
         return False
 
-    write_json(
-        '', fixed, SETTINGS_FILE,
-        msg='fixed settings file'
-    )
+    write_json("", fixed, SETTINGS_FILE, msg="fixed settings file")
 
     return True

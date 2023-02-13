@@ -10,8 +10,6 @@
 
 ## v0.10.0 (2022-11-06)
 
-_Current version_
-
 - Protect first row and column of non-master sheets so volunteers do not
   accidentally edit them (https://github.com/josephlou5/roseingrave/issues/13)
 - Add `--export-known-only` option to `volunteer_summary` and `export_master`

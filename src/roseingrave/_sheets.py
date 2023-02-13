@@ -13,24 +13,23 @@ import gspread
 from google_auth_oauthlib.flow import InstalledAppFlow
 from loguru import logger
 
+from ._read_write import get_path, read_settings
 from ._shared import error
-from ._read_write import (
-    get_path,
-    read_settings,
-)
 
 # ======================================================================
 
 __all__ = (
-    'gspread_auth',
-    'create_spreadsheet',
-    'open_spreadsheet',
-    'add_temp_sheet',
-    'share_spreadsheet', 'share_public',
-    'add_permissions',
+    "gspread_auth",
+    "create_spreadsheet",
+    "open_spreadsheet",
+    "add_temp_sheet",
+    "share_spreadsheet",
+    "share_public",
+    "add_permissions",
 )
 
 # ======================================================================
+
 
 def _local_server_flow(client_config, scopes, port=0):
     """Runs an OAuth flow exactly like
@@ -65,13 +64,13 @@ def gspread_auth(force=False):
     if not success:
         return ERROR_RETURN
 
-    logger.info('Setting up gspread authentication')
+    logger.info("Setting up gspread authentication")
     try:
-        filepath = get_path('credentials')
+        filepath = get_path("credentials")
     except FileNotFoundError as ex:
         return _error(ex)
 
-    auth_user_path = get_path('authorized_user', must_exist=False)
+    auth_user_path = get_path("authorized_user", must_exist=False)
     # use `.resolve()` to turn this into the full path to avoid this:
     # https://github.com/burnash/gspread/issues/1056
     auth_user_path = auth_user_path.resolve()
@@ -80,10 +79,10 @@ def gspread_auth(force=False):
         auth_user_path.unlink()
 
     oauth_args = {
-        'credentials_filename': str(filepath),
-        'authorized_user_filename': str(auth_user_path),
-        'flow': _local_server_flow,
-        'client_factory': gspread.client.BackoffClient,
+        "credentials_filename": str(filepath),
+        "authorized_user_filename": str(auth_user_path),
+        "flow": _local_server_flow,
+        "client_factory": gspread.client.BackoffClient,
     }
     try:
         client = gspread.oauth(**oauth_args)
@@ -95,7 +94,7 @@ def gspread_auth(force=False):
     try:
         client.list_spreadsheet_files()
     except google.auth.exceptions.RefreshError:
-        logger.warning('OAuth client credentials expired; refreshing')
+        logger.warning("OAuth client credentials expired; refreshing")
         auth_user_path.unlink()
         # try again
         try:
@@ -105,6 +104,7 @@ def gspread_auth(force=False):
             return _error(ex)
 
     return True, client
+
 
 # ======================================================================
 
@@ -127,9 +127,9 @@ def create_spreadsheet(gc, name, folder=None):
     # code -> error reason -> message
     ERRORS = {
         404: {
-            'notFound': (
+            "notFound": (
                 f'Couldn\'t find folder "{folder}". '
-                'Please check that it\'s correct or remove it.'
+                "Please check that it's correct or remove it."
             ),
         },
     }
@@ -139,16 +139,17 @@ def create_spreadsheet(gc, name, folder=None):
     except gspread.exceptions.APIError as ex:
         args = ex.args[0]
 
-        code = args['code']
+        code = args["code"]
         if code in ERRORS:
-            for err in args['errors']:
-                reason = err['reason']
+            for err in args["errors"]:
+                reason = err["reason"]
                 if reason in ERRORS[code]:
                     error(ERRORS[code][reason])
                     return False, None
 
         # re-raise
         raise
+
 
 # ======================================================================
 
@@ -168,17 +169,17 @@ def open_spreadsheet(gc, link):
     # code -> status -> message
     ERRORS = {
         403: {
-            'PERMISSION_DENIED': (
+            "PERMISSION_DENIED": (
                 f'Couldn\'t open spreadsheet "{link}" (permission '
-                'denied). Please make sure this spreadsheet is shared '
-                'with you, or remove it from the spreadsheets '
-                'index file.'
+                "denied). Please make sure this spreadsheet is shared "
+                "with you, or remove it from the spreadsheets "
+                "index file."
             ),
         },
         404: {
-            'NOT_FOUND': (
+            "NOT_FOUND": (
                 f'Couldn\'t open spreadsheet "{link}" (not found). '
-                'Please remove it from the spreadsheets index file.'
+                "Please remove it from the spreadsheets index file."
             ),
         },
     }
@@ -191,8 +192,8 @@ def open_spreadsheet(gc, link):
     except gspread.exceptions.APIError as ex:
         args = ex.args[0]
 
-        code = args['code']
-        status = args['status']
+        code = args["code"]
+        status = args["status"]
 
         try:
             logger.warning(ERRORS[code][status])
@@ -202,6 +203,7 @@ def open_spreadsheet(gc, link):
 
         # re-raise
         raise
+
 
 # ======================================================================
 
@@ -222,11 +224,11 @@ def add_temp_sheet(spreadsheet, invalid=None):
     # code -> status -> message
     ERRORS = {
         403: {
-            'PERMISSION_DENIED': (
+            "PERMISSION_DENIED": (
                 f'Couldn\'t edit spreadsheet "{spreadsheet.url}". '
-                'Please make sure this spreadsheet is shared with you '
-                'with edit permissions, or remove it from the '
-                'spreadsheets index file.'
+                "Please make sure this spreadsheet is shared with you "
+                "with edit permissions, or remove it from the "
+                "spreadsheets index file."
             ),
         },
     }
@@ -234,19 +236,19 @@ def add_temp_sheet(spreadsheet, invalid=None):
     if invalid is None:
         invalid = set()
 
-    title = '_temp'
+    title = "_temp"
     count = 0
     while title in invalid:
         count += 1
-        title = f'_temp{count}'
+        title = f"_temp{count}"
 
     try:
         return True, spreadsheet.add_worksheet(title, 1, 1)
     except gspread.exceptions.APIError as ex:
         args = ex.args[0]
 
-        code = args['code']
-        status = args['status']
+        code = args["code"]
+        status = args["status"]
 
         try:
             logger.warning(ERRORS[code][status])
@@ -257,16 +259,17 @@ def add_temp_sheet(spreadsheet, invalid=None):
         # re-raise
         raise
 
+
 # ======================================================================
 
 
 def _access_to_role(access, default):
     access = access.strip().lower()
     role = default
-    if access == 'view':
-        role = 'reader'
-    elif access == 'edit':
-        role = 'writer'
+    if access == "view":
+        role = "reader"
+    elif access == "edit":
+        role = "writer"
     return role
 
 
@@ -276,18 +279,16 @@ def _share(spreadsheet, email, *args, **kwargs):
     # code -> error reason -> message
     ERRORS = {
         400: {
-            'invalid': (
-                f'Invalid email "{email}"'
-            ),
-            'invalidSharingRequest': (
+            "invalid": (f'Invalid email "{email}"'),
+            "invalidSharingRequest": (
                 # only happens if notify=False
                 f'Invalid email "{email}": '
-                'No Google account associated with this email address.'
+                "No Google account associated with this email address."
             ),
         },
         403: {
-            'forbidden': (
-                'Insufficient permissions to share spreadsheet '
+            "forbidden": (
+                "Insufficient permissions to share spreadsheet "
                 f'"{spreadsheet.title}".'
             )
         },
@@ -299,10 +300,10 @@ def _share(spreadsheet, email, *args, **kwargs):
     except gspread.exceptions.APIError as ex:
         args = ex.args[0]
 
-        code = args['code']
+        code = args["code"]
         if code in ERRORS:
-            for err in args['errors']:
-                reason = err['reason']
+            for err in args["errors"]:
+                reason = err["reason"]
                 if reason in ERRORS[code]:
                     error(ERRORS[code][reason])
                     return False
@@ -311,12 +312,9 @@ def _share(spreadsheet, email, *args, **kwargs):
         raise
 
 
-def share_spreadsheet(spreadsheet,
-                      email,
-                      access='view',
-                      notify=False,
-                      msg=None
-                      ):
+def share_spreadsheet(
+    spreadsheet, email, access="view", notify=False, msg=None
+):
     """Share a spreadsheet with an email address.
 
     Args:
@@ -334,15 +332,15 @@ def share_spreadsheet(spreadsheet,
         bool: Whether the share was successful.
     """
 
-    role = _access_to_role(access, 'reader')
+    role = _access_to_role(access, "reader")
 
     success = _share(
         spreadsheet,
         email,
-        perm_type='user',
+        perm_type="user",
         role=role,
         notify=notify,
-        email_message=msg
+        email_message=msg,
     )
     return success
 
@@ -371,7 +369,7 @@ def share_public(spreadsheet, access=None):
     if role is None:
         return True
 
-    success = _share(spreadsheet, None, perm_type='anyone', role=role)
+    success = _share(spreadsheet, None, perm_type="anyone", role=role)
     return success
 
 
@@ -398,7 +396,7 @@ def add_permissions(spreadsheet, public_access=None, share_with=None):
             return False
 
         for email in share_with:
-            success = share_spreadsheet(spreadsheet, email, 'edit')
+            success = share_spreadsheet(spreadsheet, email, "edit")
             if not success:
                 return False
     except Exception as ex:

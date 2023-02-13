@@ -8,25 +8,19 @@ Export volunteer JSON data files.
 import click
 from loguru import logger
 
-from ._shared import fail_on_warning, error
 from ._input_files import (
-    read_template,
     read_piece_definitions,
+    read_template,
     read_volunteer_definitions,
 )
-from ._output_files import (
-    read_spreadsheets_index,
-    write_volunteer_data,
-)
-from ._sheets import (
-    gspread_auth,
-    open_spreadsheet,
-)
+from ._output_files import read_spreadsheets_index, write_volunteer_data
 from ._piece import Piece
+from ._shared import error, fail_on_warning
+from ._sheets import gspread_auth, open_spreadsheet
 
 # ======================================================================
 
-__all__ = ('volunteer_summary',)
+__all__ = ("volunteer_summary",)
 
 # ======================================================================
 
@@ -65,8 +59,9 @@ def export_spreadsheet(gc, email, link, template, volunteer=None):
             if sheet.title not in volunteer_pieces:
                 logger.warning(
                     'Volunteer "{}" does not have piece "{}" in piece '
-                    'definitions file: skipping',
-                    email, sheet.title
+                    "definitions file: skipping",
+                    email,
+                    sheet.title,
                 )
                 continue
         success, piece_data = Piece.export_sheet(sheet, template)
@@ -76,53 +71,59 @@ def export_spreadsheet(gc, email, link, template, volunteer=None):
 
     return True, data
 
+
 # ======================================================================
 
 
 @click.command(
-    'volunteer_summary',
-    help='Export volunteer JSON data files.',
+    "volunteer_summary",
+    help="Export volunteer JSON data files.",
 )
-@click.argument('emails', type=str, nargs=-1)
+@click.argument("emails", type=str, nargs=-1)
 @click.option(
-    '-si', type=str,
-    help='A filepath to replace the spreadsheets index file.'
-)
-@click.option(
-    '-td', type=str,
-    help='A filepath to replace the template definitions file.'
+    "-si", type=str, help="A filepath to replace the spreadsheets index file."
 )
 @click.option(
-    '-pd', type=str,
-    help='A filepath to replace the piece definitions file.'
+    "-td",
+    type=str,
+    help="A filepath to replace the template definitions file.",
 )
 @click.option(
-    '-vd', type=str,
-    help='A filepath to replace the volunteer definitions file.'
+    "-pd", type=str, help="A filepath to replace the piece definitions file."
 )
 @click.option(
-    '-vdp', type=str,
+    "-vd",
+    type=str,
+    help="A filepath to replace the volunteer definitions file.",
+)
+@click.option(
+    "-vdp",
+    type=str,
     help=(
-        'A filepath to replace the volunteer data path file. '
+        "A filepath to replace the volunteer data path file. "
         'Must include "{email}".'
-    )
+    ),
 )
 @click.option(
-    '-ek', '--export-known-only',
-    is_flag=True, default=False, flag_value=True,
+    "-ek",
+    "--export-known-only",
+    is_flag=True,
+    default=False,
+    flag_value=True,
     help=(
-        'Export only the volunteers and pieces that appear in the '
-        'definition files. Requires piece definitions file and '
-        'volunteer definitions file. Default is False.'
-    )
+        "Export only the volunteers and pieces that appear in the "
+        "definition files. Requires piece definitions file and "
+        "volunteer definitions file. Default is False."
+    ),
 )
 @click.option(
-    '--strict', is_flag=True, default=False, flag_value=True,
-    help='Fail on warnings instead of only displaying them.'
+    "--strict",
+    is_flag=True,
+    default=False,
+    flag_value=True,
+    help="Fail on warnings instead of only displaying them.",
 )
-def volunteer_summary(
-    emails, si, td, pd, vd, vdp, export_known_only, strict
-):
+def volunteer_summary(emails, si, td, pd, vd, vdp, export_known_only, strict):
     """Export volunteer JSON data files.
 
     Args:
@@ -145,7 +146,7 @@ def volunteer_summary(
     """
 
     # validate args
-    if vdp is not None and vdp.count('{email}') != 1:
+    if vdp is not None and vdp.count("{email}") != 1:
         error('`vdp` must include "{email}" exactly once')
         return
 
@@ -157,7 +158,7 @@ def volunteer_summary(
     if not success:
         return
     # remove master spreadsheet
-    spreadsheets.pop('MASTER', None)
+    spreadsheets.pop("MASTER", None)
 
     success, template = read_template(td, strict)
     if not success:
@@ -169,16 +170,15 @@ def volunteer_summary(
         for email in emails:
             if email not in spreadsheets:
                 logger.warning(
-                    'Volunteer "{}" not found in spreadsheets index '
-                    'file',
-                    email
+                    'Volunteer "{}" not found in spreadsheets index file',
+                    email,
                 )
                 continue
             filtered[email] = spreadsheets[email]
         spreadsheets = filtered
 
     if len(spreadsheets) == 0:
-        logger.info('No volunteers to export data for')
+        logger.info("No volunteers to export data for")
         return
 
     if export_known_only:
@@ -186,9 +186,7 @@ def volunteer_summary(
         if not success:
             return
 
-        success, volunteers = read_volunteer_definitions(
-            pieces, vd, strict
-        )
+        success, volunteers = read_volunteer_definitions(pieces, vd, strict)
         if not success:
             return
     else:
@@ -198,14 +196,13 @@ def volunteer_summary(
     data = {}
 
     # export spreadsheets
-    logger.info('Exporting data from spreadsheets')
+    logger.info("Exporting data from spreadsheets")
     for email, link in spreadsheets.items():
         volunteer = None
         if volunteers is not None:
             if email not in volunteers:
                 logger.warning(
-                    'Unknown volunteer "{}": skipping spreadsheet',
-                    email
+                    'Unknown volunteer "{}": skipping spreadsheet', email
                 )
                 continue
             volunteer = volunteers[email]
@@ -223,4 +220,4 @@ def volunteer_summary(
         if not success:
             return
 
-    logger.info('Done')
+    logger.info("Done")

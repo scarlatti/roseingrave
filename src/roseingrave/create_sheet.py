@@ -15,7 +15,8 @@ from ._input_files import (
     read_volunteer_definitions,
 )
 from ._output_files import (
-    read_spreadsheets_index, write_spreadsheets_index,
+    read_spreadsheets_index,
+    write_spreadsheets_index,
 )
 from ._sheets import (
     gspread_auth,
@@ -28,7 +29,7 @@ from ._sheets import (
 
 # ======================================================================
 
-__all__ = ('create_sheet',)
+__all__ = ("create_sheet",)
 
 # ======================================================================
 
@@ -49,7 +50,7 @@ def create_spreadsheets(gc, spreadsheets, template, emails):
     if len(emails) == 0:
         return True
 
-    logger.info('Creating new spreadsheets')
+    logger.info("Creating new spreadsheets")
 
     created = []
 
@@ -57,12 +58,12 @@ def create_spreadsheets(gc, spreadsheets, template, emails):
         for ss in created:
             gc.del_spreadsheet(ss)
 
-    ss_settings = template['volunteerSpreadsheet']
-    folder = ss_settings['folder']
-    title_fmt = ss_settings['title']
-    public_access = ss_settings['publicAccess']
-    share_with_volunteer = ss_settings['shareWithVolunteer']
-    share_with = ss_settings['shareWith']
+    ss_settings = template["volunteerSpreadsheet"]
+    folder = ss_settings["folder"]
+    title_fmt = ss_settings["title"]
+    public_access = ss_settings["publicAccess"]
+    share_with_volunteer = ss_settings["shareWithVolunteer"]
+    share_with = ss_settings["shareWith"]
 
     for email in emails:
         success, spreadsheet = create_spreadsheet(
@@ -73,9 +74,7 @@ def create_spreadsheets(gc, spreadsheets, template, emails):
             return False
         created.append(spreadsheet.id)
 
-        success = add_permissions(
-            spreadsheet, public_access, share_with
-        )
+        success = add_permissions(spreadsheet, public_access, share_with)
         if not success:
             delete_created()
             return False
@@ -83,13 +82,13 @@ def create_spreadsheets(gc, spreadsheets, template, emails):
         if share_with_volunteer:
             # make volunteer an editor
             msg = (
-                'This is an invitation for you to collaborate on a '
-                'crowd-sourcing spreadsheet for a project run by '
-                'Roseingrave. Thank you for accepting our invitation '
-                'as a volunteer.'
+                "This is an invitation for you to collaborate on a "
+                "crowd-sourcing spreadsheet for a project run by "
+                "Roseingrave. Thank you for accepting our invitation "
+                "as a volunteer."
             )
             success = share_spreadsheet(
-                spreadsheet, email, 'edit', notify=True, msg=msg
+                spreadsheet, email, "edit", notify=True, msg=msg
             )
             if not success:
                 delete_created()
@@ -98,6 +97,7 @@ def create_spreadsheets(gc, spreadsheets, template, emails):
         spreadsheets[email] = spreadsheet.url
 
     return True
+
 
 # ======================================================================
 
@@ -117,7 +117,7 @@ def populate_spreadsheets(gc, spreadsheets, volunteers, pieces, strict):
         bool: Whether the population was successful.
     """
 
-    logger.info('Populating spreadsheets with pieces')
+    logger.info("Populating spreadsheets with pieces")
 
     # piece name -> sheet object
     sheets = {}
@@ -135,9 +135,8 @@ def populate_spreadsheets(gc, spreadsheets, volunteers, pieces, strict):
 
         # delete existing sheets
         existing_sheets = list(spreadsheet.worksheets())
-        invalid_names = (
-            set(volunteer.pieces) |
-            set(sheet.title for sheet in existing_sheets)
+        invalid_names = set(volunteer.pieces) | set(
+            sheet.title for sheet in existing_sheets
         )
         success, temp_sheet = add_temp_sheet(spreadsheet, invalid_names)
         if not success:
@@ -150,9 +149,7 @@ def populate_spreadsheets(gc, spreadsheets, volunteers, pieces, strict):
 
         for piece_name in volunteer.pieces:
             if piece_name not in sheets:
-                logger.debug(
-                    'Creating sheet for piece "{}"', piece_name
-                )
+                logger.debug('Creating sheet for piece "{}"', piece_name)
                 sheet = pieces[piece_name].create_sheet(spreadsheet)
                 sheets[piece_name] = sheet
             else:
@@ -160,7 +157,7 @@ def populate_spreadsheets(gc, spreadsheets, volunteers, pieces, strict):
                 logger.debug('Copying sheet for piece "{}"', piece_name)
                 data = sheets[piece_name].copy_to(spreadsheet.id)
                 # update sheet title to piece name
-                sheet = spreadsheet.get_worksheet_by_id(data['sheetId'])
+                sheet = spreadsheet.get_worksheet_by_id(data["sheetId"])
                 sheet.update_title(piece_name)
 
         # delete temp sheet
@@ -168,41 +165,53 @@ def populate_spreadsheets(gc, spreadsheets, volunteers, pieces, strict):
 
     return True
 
+
 # ======================================================================
 
 
 @click.command(
-    'create_sheet',
-    help='Create volunteer spreadsheets.',
+    "create_sheet",
+    help="Create volunteer spreadsheets.",
 )
-@click.argument('emails', type=str, nargs=-1)
+@click.argument("emails", type=str, nargs=-1)
 @click.option(
-    '-r', '--replace', is_flag=True, default=False, flag_value=True,
-    help='Replace existing volunteer spreadsheets.'
-)
-@click.option(
-    '-n', '--new', is_flag=True, default=False, flag_value=True,
-    help='Create new spreadsheets for all volunteers.'
-)
-@click.option(
-    '-td', type=str,
-    help='A filepath to replace the template definitions file.'
+    "-r",
+    "--replace",
+    is_flag=True,
+    default=False,
+    flag_value=True,
+    help="Replace existing volunteer spreadsheets.",
 )
 @click.option(
-    '-pd', type=str,
-    help='A filepath to replace the piece definitions file.'
+    "-n",
+    "--new",
+    is_flag=True,
+    default=False,
+    flag_value=True,
+    help="Create new spreadsheets for all volunteers.",
 )
 @click.option(
-    '-vd', type=str,
-    help='A filepath to replace the volunteer definitions file.'
+    "-td",
+    type=str,
+    help="A filepath to replace the template definitions file.",
 )
 @click.option(
-    '-si', type=str,
-    help='A filepath to replace the spreadsheets index file.'
+    "-pd", type=str, help="A filepath to replace the piece definitions file."
 )
 @click.option(
-    '--strict', is_flag=True, default=False, flag_value=True,
-    help='Fail on warnings instead of only displaying them.'
+    "-vd",
+    type=str,
+    help="A filepath to replace the volunteer definitions file.",
+)
+@click.option(
+    "-si", type=str, help="A filepath to replace the spreadsheets index file."
+)
+@click.option(
+    "--strict",
+    is_flag=True,
+    default=False,
+    flag_value=True,
+    help="Fail on warnings instead of only displaying them.",
 )
 def create_sheet(emails, replace, new, td, pd, vd, si, strict):
     """Create volunteer spreadsheets.
@@ -250,13 +259,13 @@ def create_sheet(emails, replace, new, td, pd, vd, si, strict):
         filtered = {}
         for email in emails:
             # don't allow this to update the master spreadsheet
-            if email == 'MASTER':
+            if email == "MASTER":
                 continue
             if email not in volunteers:
                 logger.warning(
                     'Volunteer "{}" not found in volunteer definitions '
-                    'file',
-                    email
+                    "file",
+                    email,
                 )
                 continue
             filtered[email] = volunteers[email]
@@ -269,8 +278,7 @@ def create_sheet(emails, replace, new, td, pd, vd, si, strict):
     else:
         # don't create new for emails that already have a spreadsheet
         already_exist = {
-            email for email in volunteers
-            if email in spreadsheets
+            email for email in volunteers if email in spreadsheets
         }
         create_for = set(volunteers.keys()) - already_exist
 
@@ -279,19 +287,17 @@ def create_sheet(emails, replace, new, td, pd, vd, si, strict):
             for email in already_exist:
                 logger.debug(
                     'Volunteer "{}" being skipped '
-                    '(already in spreadsheets index file)',
-                    email
+                    "(already in spreadsheets index file)",
+                    email,
                 )
                 volunteers.pop(email)
 
     if len(volunteers) == 0:
-        logger.info('No volunteers to create spreadsheets for')
+        logger.info("No volunteers to create spreadsheets for")
         return
 
     # create new spreadsheets
-    success = create_spreadsheets(
-        gc, spreadsheets, template, create_for
-    )
+    success = create_spreadsheets(gc, spreadsheets, template, create_for)
     if not success:
         return
 
@@ -307,4 +313,4 @@ def create_sheet(emails, replace, new, td, pd, vd, si, strict):
         if not success:
             return
 
-    logger.info('Done')
+    logger.info("Done")

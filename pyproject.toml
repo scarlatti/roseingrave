@@ -59,18 +59,19 @@ rsa = "4.8"
 six = "1.16.0"
 urllib3 = "1.26.9"
 
-[tool.poetry.dev-dependencies]
-#codecov = "^2.1.10"
-#pytest = "^5.2"
-#pytest-cov = "^2.10.1"
-#pytest-mock = "^3.3.1"
-#pytest-repeat = "^0.9.1"
-#pytest-subtests = "^0.3.2"
-#sphinx = "^3.3.0"
-#sphinx-autodoc-typehints = "^1.11.1"
-#sphinx-rtd-theme = "^0.5.0"
-#tox = "^3.20.1"
-#tox-poetry-dev-dependencies = "^0.0.9"
+[tool.poetry.group.dev.dependencies]
+black = "^23.1.0"
+isort = "^5.12.0"
+pylint = "^2.16.2"
+
+[tool.black]
+line-length = 79
+
+[tool.isort]
+profile = "black"
+# Just setting the profile will use the `black` default line length of 88, so
+# need to override line length as well
+line_length = 79
 
 [build-system]
 build-backend = "poetry.masonry.api"

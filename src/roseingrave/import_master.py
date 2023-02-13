@@ -14,7 +14,8 @@ from ._input_files import (
 )
 from ._output_files import (
     read_summary,
-    read_spreadsheets_index, write_spreadsheets_index,
+    read_spreadsheets_index,
+    write_spreadsheets_index,
 )
 from ._sheets import (
     gspread_auth,
@@ -26,11 +27,11 @@ from ._sheets import (
 
 # ======================================================================
 
-__all__ = ('import_master',)
+__all__ = ("import_master",)
 
 # ======================================================================
 
-MASTER_KEY = 'MASTER'
+MASTER_KEY = "MASTER"
 
 # ======================================================================
 
@@ -50,9 +51,8 @@ def _create_piece_sheets(spreadsheet, pieces, summary):
 
     # delete existing sheets
     existing_sheets = list(spreadsheet.worksheets())
-    invalid_names = (
-        set(summary.keys()) |
-        set(sheet.title for sheet in existing_sheets)
+    invalid_names = set(summary.keys()) | set(
+        sheet.title for sheet in existing_sheets
     )
     success, temp_sheet = add_temp_sheet(spreadsheet, invalid_names)
     if not success:
@@ -69,36 +69,42 @@ def _create_piece_sheets(spreadsheet, pieces, summary):
 
     return True
 
+
 # ======================================================================
 
 
-@click.command(
-    'import_master',
-    help='Update the master spreadsheet.'
+@click.command("import_master", help="Update the master spreadsheet.")
+@click.option(
+    "-c",
+    "--create",
+    is_flag=True,
+    default=False,
+    flag_value=True,
+    help="Create a new master spreadsheet.",
 )
 @click.option(
-    '-c', '--create', is_flag=True, default=False, flag_value=True,
-    help='Create a new master spreadsheet.'
+    "-td",
+    type=str,
+    help="A filepath to replace the template definitions file.",
 )
 @click.option(
-    '-td', type=str,
-    help='A filepath to replace the template definitions file.'
+    "-pd", type=str, help="A filepath to replace the piece definitions file."
 )
 @click.option(
-    '-pd', type=str,
-    help='A filepath to replace the piece definitions file.'
+    "-s",
+    "summary_path",
+    type=str,
+    help="A filepath to replace the summary file.",
 )
 @click.option(
-    '-s', 'summary_path', type=str,
-    help='A filepath to replace the summary file.'
+    "-si", type=str, help="A filepath to replace the spreadsheets index file."
 )
 @click.option(
-    '-si', type=str,
-    help='A filepath to replace the spreadsheets index file.'
-)
-@click.option(
-    '--strict', is_flag=True, default=False, flag_value=True,
-    help='Fail on warnings instead of only displaying them.'
+    "--strict",
+    is_flag=True,
+    default=False,
+    flag_value=True,
+    help="Fail on warnings instead of only displaying them.",
 )
 def import_master(create, td, pd, summary_path, si, strict):
     """Update the master spreadsheet.
@@ -116,8 +122,8 @@ def import_master(create, td, pd, summary_path, si, strict):
     """
 
     logger.warning(
-        'For most accurate summary, run the `compile_pieces` or '
-        '`export_master` command first.'
+        "For most accurate summary, run the `compile_pieces` or "
+        "`export_master` command first."
     )
 
     success, gc = gspread_auth()
@@ -145,26 +151,24 @@ def import_master(create, td, pd, summary_path, si, strict):
     # check if need to create spreadsheet
     if MASTER_KEY not in spreadsheets:
         logger.debug(
-            'Master spreadsheet link not found in spreadsheets index '
-            'file: creating new'
+            "Master spreadsheet link not found in spreadsheets index "
+            "file: creating new"
         )
         create = True
 
     # create or open spreadsheet
     if create:
-        ss_settings = template['masterSpreadsheet']
+        ss_settings = template["masterSpreadsheet"]
 
         success, spreadsheet = create_spreadsheet(
-            gc, ss_settings['title'], ss_settings['folder']
+            gc, ss_settings["title"], ss_settings["folder"]
         )
         if not success:
             return
 
         # permissions
         success = add_permissions(
-            spreadsheet,
-            ss_settings['publicAccess'],
-            ss_settings['shareWith']
+            spreadsheet, ss_settings["publicAccess"], ss_settings["shareWith"]
         )
         if not success:
             gc.del_spreadsheet(spreadsheet.id)
@@ -190,4 +194,4 @@ def import_master(create, td, pd, summary_path, si, strict):
         if not success:
             return
 
-    logger.info('Done')
+    logger.info("Done")

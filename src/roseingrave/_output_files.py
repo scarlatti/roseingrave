@@ -13,27 +13,28 @@ from pathlib import Path
 
 from loguru import logger
 
-from ._shared import fail_on_warning, error
 from ._read_write import (
     get_path,
     read_json,
+    read_settings,
     write_json,
     write_json_file,
-    read_settings,
 )
-from ._sheets import (
-    gspread_auth,
-    open_spreadsheet,
-)
+from ._shared import error, fail_on_warning
+from ._sheets import gspread_auth, open_spreadsheet
 
 # ======================================================================
 
 __all__ = (
-    'read_spreadsheets_index', 'write_spreadsheets_index',
-    'fix_spreadsheets_index',
-    'read_volunteer_data', 'write_volunteer_data',
-    'read_piece_data', 'write_piece_data',
-    'read_summary', 'write_summary',
+    "read_spreadsheets_index",
+    "write_spreadsheets_index",
+    "fix_spreadsheets_index",
+    "read_volunteer_data",
+    "write_volunteer_data",
+    "read_piece_data",
+    "write_piece_data",
+    "read_summary",
+    "write_summary",
 )
 
 # ======================================================================
@@ -61,10 +62,10 @@ def read_spreadsheets_index(path=None, must_exist=False):
     if not success:
         return ERROR_RETURN
 
-    logger.info('Reading spreadsheets index file')
+    logger.info("Reading spreadsheets index file")
 
     try:
-        contents = read_json('spreadsheetsIndex', path)
+        contents = read_json("spreadsheetsIndex", path)
     except FileNotFoundError as ex:
         if must_exist:
             logger.error(ex)
@@ -96,8 +97,7 @@ def write_spreadsheets_index(data, path=None):
         return False
 
     write_json(
-        'spreadsheetsIndex', data, path,
-        msg='created spreadsheet links'
+        "spreadsheetsIndex", data, path, msg="created spreadsheet links"
     )
 
     return True
@@ -123,10 +123,10 @@ def fix_spreadsheets_index(path=None):
     if not success:
         return False
 
-    logger.info('Fixing spreadsheets index file')
+    logger.info("Fixing spreadsheets index file")
 
     try:
-        contents = read_json('spreadsheetsIndex', path)
+        contents = read_json("spreadsheetsIndex", path)
     except (FileNotFoundError, ValueError) as ex:
         return _error(ex)
 
@@ -138,24 +138,21 @@ def fix_spreadsheets_index(path=None):
     for email, link in contents.items():
         success, _ = open_spreadsheet(gc, link)
         if not success:
-            if email == 'MASTER':
-                volunteer = 'master spreadsheet'
+            if email == "MASTER":
+                volunteer = "master spreadsheet"
             else:
                 volunteer = f'volunteer "{email}"'
-            _error('Removing {}', volunteer)
+            _error("Removing {}", volunteer)
             continue
         fixed[email] = link
 
     data = {}
-    if 'MASTER' in fixed:
-        data['MASTER'] = fixed.pop('MASTER')
+    if "MASTER" in fixed:
+        data["MASTER"] = fixed.pop("MASTER")
     for email, link in sorted(fixed.items()):
         data[email] = link
 
-    write_json(
-        'spreadsheetsIndex', data, path,
-        msg='fixed spreadsheet links'
-    )
+    write_json("spreadsheetsIndex", data, path, msg="fixed spreadsheet links")
 
     return True
 
@@ -186,17 +183,16 @@ def _read_format_files(fmt_path, arg):
         )
 
     path_parts = fmt_path.parts
-    cwd_parts = Path('.').resolve().parts
+    cwd_parts = Path(".").resolve().parts
 
     # find where they start to differ and where the arg occurs
     differ = None
     arg_index = None
     path_re = None
-    for i, (path_part, part) in \
-            enumerate(zip_longest(path_parts, cwd_parts)):
+    for i, (path_part, part) in enumerate(zip_longest(path_parts, cwd_parts)):
         if path_part is not None and arg in path_part:
             arg_index = i
-            path_re = re.compile(path_part.replace(arg, '(.+)'))
+            path_re = re.compile(path_part.replace(arg, "(.+)"))
             if differ is None:
                 differ = i
             break
@@ -222,7 +218,8 @@ def _read_format_files(fmt_path, arg):
 
         if (
             # invalid index
-            index >= num_parts or
+            index >= num_parts
+            or
             # can only be a file when last part
             curr_path.is_file() != last_part
         ):
@@ -244,7 +241,7 @@ def _read_format_files(fmt_path, arg):
         if last_part:
             if found_arg is not None:
                 # add to data
-                data[found_arg] = read_json('', str(curr_path))
+                data[found_arg] = read_json("", str(curr_path))
             return
 
         # recursively check next
@@ -256,23 +253,25 @@ def _read_format_files(fmt_path, arg):
         check_path(differ, path)
 
     if len(data) == 0:
-        logger.info('No matching files found')
+        logger.info("No matching files found")
         return False, None
 
     return True, data
 
+
 # ======================================================================
 
 
-def _validate_source(piece,
-                     sources,
-                     index,
-                     raw_source,
-                     p_loc,
-                     strict,
-                     has_volunteers=False,
-                     has_summary=False
-                     ):
+def _validate_source(
+    piece,
+    sources,
+    index,
+    raw_source,
+    p_loc,
+    strict,
+    has_volunteers=False,
+    has_summary=False,
+):
     """Validate a source from an input file.
     Adds the fixed source to `sources`.
 
@@ -304,30 +303,28 @@ def _validate_source(piece,
     def _error(msg, *args, **kwargs):
         return error(msg.format(*args, **kwargs), ERROR_RETURN)
 
-    fields = ('name', 'link')
+    fields = ("name", "link")
     if has_volunteers:
-        fields += ('volunteers',)
+        fields += ("volunteers",)
     if has_summary:
-        fields += ('summary',)
-    missing_fields = [
-        key for key in fields
-        if key not in raw_source
-    ]
+        fields += ("summary",)
+    missing_fields = [key for key in fields if key not in raw_source]
     if len(missing_fields) > 0:
         return _error(
-            'Missing fields {} for {}, source {}',
-            ','.join(f'"{key}"' for key in missing_fields),
-            p_loc, index
+            "Missing fields {} for {}, source {}",
+            ",".join(f'"{key}"' for key in missing_fields),
+            p_loc,
+            index,
         )
 
-    name = raw_source['name']
-    s_link = raw_source['link']
+    name = raw_source["name"]
+    s_link = raw_source["link"]
 
     if not piece.has_source(name):
         logger.warning(
-            'Unknown source "{}" for {} '
-            '(not in piece definitions file)',
-            name, p_loc
+            'Unknown source "{}" for {} (not in piece definitions file)',
+            name,
+            p_loc,
         )
         if strict:
             fail_on_warning()
@@ -344,23 +341,21 @@ def _validate_source(piece,
     s_loc = f'{p_loc}, source "{name}"'
 
     if s_link != piece.get_source(name).link:
-        logger.warning(
-            'Incorrect source link "{}" for {}', s_link, s_loc
-        )
+        logger.warning('Incorrect source link "{}" for {}', s_link, s_loc)
         if strict:
             fail_on_warning()
             return ERROR_RETURN
 
     if has_volunteers:
         volunteers = {}
-        for email, volunteer in raw_source['volunteers'].items():
+        for email, volunteer in raw_source["volunteers"].items():
             v_loc = f'{s_loc}, volunteer "{email}"'
             warning, fixed = piece.with_defaults(volunteer, v_loc)
             if strict and warning:
                 fail_on_warning()
                 return ERROR_RETURN
             volunteers[email] = fixed
-        adding = {'volunteers': volunteers}
+        adding = {"volunteers": volunteers}
     else:
         warning, source = piece.with_defaults(raw_source, s_loc)
         if strict and warning:
@@ -369,33 +364,32 @@ def _validate_source(piece,
         adding = source
 
     if has_summary:
-        warning, summary = piece.with_defaults(
-            raw_source['summary'], s_loc
-        )
+        warning, summary = piece.with_defaults(raw_source["summary"], s_loc)
         if strict and warning:
             fail_on_warning()
             return ERROR_RETURN
-        adding['summary'] = summary
+        adding["summary"] = summary
 
     sources[name] = {
-        'name': name,
-        'link': s_link,
+        "name": name,
+        "link": s_link,
         **adding,
     }
 
     return SUCCESS_RETURN
 
 
-def _validate_piece(pieces,
-                    fixed_pieces,
-                    v_loc,
-                    raw_piece,
-                    strict,
-                    index=None,
-                    from_piece_file=False,
-                    file=None,
-                    has_summary=False
-                    ):
+def _validate_piece(
+    pieces,
+    fixed_pieces,
+    v_loc,
+    raw_piece,
+    strict,
+    index=None,
+    from_piece_file=False,
+    file=None,
+    has_summary=False,
+):
     """Validate a piece from an input file.
     Adds the fixed piece to `fixed_pieces`.
 
@@ -429,25 +423,27 @@ def _validate_piece(pieces,
         return error(msg.format(*args, **kwargs), ERROR_RETURN)
 
     missing_fields = [
-        key for key in ('title', 'link', 'sources', 'notes')
+        key
+        for key in ("title", "link", "sources", "notes")
         if key not in raw_piece
     ]
     if len(missing_fields) > 0:
         if from_piece_file and file is not None:
             loc = f'piece file "{file}"'
         elif index is not None:
-            loc = f'piece {index}'
+            loc = f"piece {index}"
             if v_loc is not None:
-                loc = f'{v_loc}, {loc}'
+                loc = f"{v_loc}, {loc}"
         else:
-            loc = 'piece (location unknown)'
+            loc = "piece (location unknown)"
         return _error(
-            'Missing fields {} for {}',
-            ','.join(f'"{key}"' for key in missing_fields), loc
+            "Missing fields {} for {}",
+            ",".join(f'"{key}"' for key in missing_fields),
+            loc,
         )
 
-    title = raw_piece['title']
-    p_link = raw_piece['link']
+    title = raw_piece["title"]
+    p_link = raw_piece["link"]
 
     if from_piece_file and file is not None and file != title:
         msg = f'Piece name "{title}" doesn\'t match file arg "{file}"'
@@ -460,8 +456,8 @@ def _validate_piece(pieces,
     if title not in pieces:
         msg = f'Unknown piece "{title}"'
         if v_loc is not None:
-            msg += f' for {v_loc}'
-        msg += ' (not in piece definitions file)'
+            msg += f" for {v_loc}"
+        msg += " (not in piece definitions file)"
         logger.warning(msg)
         if strict:
             fail_on_warning()
@@ -472,7 +468,7 @@ def _validate_piece(pieces,
     if title in fixed_pieces:
         msg = f'Repeated piece "{title}"'
         if v_loc is not None:
-            msg += f' for {v_loc}'
+            msg += f" for {v_loc}"
         logger.warning(msg)
         if strict:
             fail_on_warning()
@@ -481,62 +477,67 @@ def _validate_piece(pieces,
 
     p_loc = f'piece "{title}"'
     if v_loc is not None:
-        p_loc = f'{v_loc}, {p_loc}'
+        p_loc = f"{v_loc}, {p_loc}"
 
     warning = False
     if piece_obj.link is None:
         if p_link is not None:
             warning = True
-            logger.warning(
-                'Extra piece link "{}" for {}', p_link, p_loc
-            )
+            logger.warning('Extra piece link "{}" for {}', p_link, p_loc)
     else:
         if p_link is None:
             warning = True
-            logger.warning('Missing piece link for {}', p_loc)
+            logger.warning("Missing piece link for {}", p_loc)
         elif p_link != piece_obj.link:
             warning = True
-            logger.warning(
-                'Incorrect piece link "{}" for {}', p_link, p_loc
-            )
+            logger.warning('Incorrect piece link "{}" for {}', p_link, p_loc)
     if strict and warning:
         fail_on_warning()
         return ERROR_RETURN
 
     sources = {}
-    for i, raw_source in enumerate(raw_piece['sources']):
+    for i, raw_source in enumerate(raw_piece["sources"]):
         had_error = _validate_source(
-            piece_obj, sources, i, raw_source, p_loc, strict,
-            has_volunteers=from_piece_file, has_summary=has_summary
+            piece_obj,
+            sources,
+            i,
+            raw_source,
+            p_loc,
+            strict,
+            has_volunteers=from_piece_file,
+            has_summary=has_summary,
         )
         if had_error:
             return ERROR_RETURN
     missing_sources = [
-        name for name in piece_obj.all_sources()
-        if name not in sources
+        name for name in piece_obj.all_sources() if name not in sources
     ]
     if len(missing_sources) > 0:
         return _error(
-            'Missing sources {} for {}',
-            ','.join(f'"{name}"' for name in missing_sources), p_loc
+            "Missing sources {} for {}",
+            ",".join(f'"{name}"' for name in missing_sources),
+            p_loc,
         )
 
     warning, notes = piece_obj.with_defaults(
-        raw_piece['notes'], p_loc,
-        exclude_comments=True, is_notes=from_piece_file
+        raw_piece["notes"],
+        p_loc,
+        exclude_comments=True,
+        is_notes=from_piece_file,
     )
     if strict and warning:
         fail_on_warning()
         return ERROR_RETURN
 
     fixed_pieces[title] = {
-        'title': title,
-        'link': p_link,
-        'sources': sources,
-        'notes': notes,
+        "title": title,
+        "link": p_link,
+        "sources": sources,
+        "notes": notes,
     }
 
     return SUCCESS_RETURN
+
 
 # ======================================================================
 
@@ -570,21 +571,18 @@ def read_volunteer_data(pieces, fmt_path=None, strict=False):
 
     # validate args
     try:
-        path = get_path(
-            'volunteerDataPath', fmt_path,
-            must_exist=False
-        )
+        path = get_path("volunteerDataPath", fmt_path, must_exist=False)
     except Exception as ex:
         return _error(ex)
-    if str(path).count('{email}') != 1:
+    if str(path).count("{email}") != 1:
         return _error(
             'Path to volunteer data files must include "{email}" '
-            'exactly once'
+            "exactly once"
         )
 
-    logger.info('Reading volunteer data from files: {}', path)
+    logger.info("Reading volunteer data from files: {}", path)
 
-    success, raw_data = _read_format_files(path, '{email}')
+    success, raw_data = _read_format_files(path, "{email}")
     if not success:
         return ERROR_RETURN
 
@@ -627,24 +625,22 @@ def write_volunteer_data(data, fmt_path=None):
 
     # validate args
     try:
-        path = str(get_path(
-            'volunteerDataPath', fmt_path,
-            must_exist=False
-        ))
+        path = str(get_path("volunteerDataPath", fmt_path, must_exist=False))
     except Exception as ex:
         return _error(ex)
-    if path.count('{email}') != 1:
+    if path.count("{email}") != 1:
         return _error(
             'Path to volunteer data files must include "{email}" '
-            'exactly once'
+            "exactly once"
         )
 
-    logger.info('Writing volunteer data to files: {}', path)
+    logger.info("Writing volunteer data to files: {}", path)
 
     for email, volunteer_data in data.items():
         write_json_file(path.format(email=email), volunteer_data)
 
     return True
+
 
 # ======================================================================
 
@@ -677,18 +673,17 @@ def read_piece_data(pieces, fmt_path=None, strict=False):
 
     # validate args
     try:
-        path = get_path('pieceDataPath', fmt_path, must_exist=False)
+        path = get_path("pieceDataPath", fmt_path, must_exist=False)
     except Exception as ex:
         return _error(ex)
-    if str(path).count('{piece}') != 1:
+    if str(path).count("{piece}") != 1:
         return _error(
-            'Path to piece data files must include "{piece}" exactly '
-            'once'
+            'Path to piece data files must include "{piece}" exactly once'
         )
 
-    logger.info('Reading piece data from files: {}', path)
+    logger.info("Reading piece data from files: {}", path)
 
-    success, raw_data = _read_format_files(path, '{piece}')
+    success, raw_data = _read_format_files(path, "{piece}")
     if not success:
         return ERROR_RETURN
 
@@ -699,8 +694,13 @@ def read_piece_data(pieces, fmt_path=None, strict=False):
     pieces_data = {}
     for file, raw_piece in raw_data.items():
         had_error = _validate_piece(
-            pieces, pieces_data, None, raw_piece, strict,
-            from_piece_file=True, file=file
+            pieces,
+            pieces_data,
+            None,
+            raw_piece,
+            strict,
+            from_piece_file=True,
+            file=file,
         )
         if had_error:
             return ERROR_RETURN
@@ -731,24 +731,21 @@ def write_piece_data(data, fmt_path=None):
 
     # validate args
     try:
-        path = str(get_path(
-            'pieceDataPath',
-            fmt_path, must_exist=False
-        ))
+        path = str(get_path("pieceDataPath", fmt_path, must_exist=False))
     except Exception as ex:
         return _error(ex)
-    if path.count('{piece}') != 1:
+    if path.count("{piece}") != 1:
         return _error(
-            'Path to piece data files must include "{piece}" exactly '
-            'once'
+            'Path to piece data files must include "{piece}" exactly once'
         )
 
-    logger.info('Writing piece data to files: {}', path)
+    logger.info("Writing piece data to files: {}", path)
 
     for piece, piece_data in data.items():
         write_json_file(path.format(piece=piece), piece_data)
 
     return True
+
 
 # ======================================================================
 
@@ -779,9 +776,9 @@ def read_summary(pieces, path=None, strict=False):
     if not success:
         return ERROR_RETURN
 
-    logger.info('Reading summary file')
+    logger.info("Reading summary file")
 
-    key = 'summary'
+    key = "summary"
 
     try:
         values = read_json(key, path)
@@ -792,8 +789,14 @@ def read_summary(pieces, path=None, strict=False):
     summary = {}
     for i, raw_piece in enumerate(values):
         had_error = _validate_piece(
-            pieces, summary, None, raw_piece, strict,
-            index=i, from_piece_file=True, has_summary=True
+            pieces,
+            summary,
+            None,
+            raw_piece,
+            strict,
+            index=i,
+            from_piece_file=True,
+            has_summary=True,
         )
         if had_error:
             return ERROR_RETURN
@@ -817,5 +820,5 @@ def write_summary(summary, path=None):
     if not success:
         return False
 
-    write_json('summary', summary, path, msg='summary')
+    write_json("summary", summary, path, msg="summary")
     return True

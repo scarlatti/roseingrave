@@ -20,7 +20,7 @@ The package will be added as a top-level command:
 $ roseingrave --help
 ```
 
-Create a folder to store all your input/ouput files. In this folder, place your
+Create a folder to store all your input/output files. In this folder, place your
 OAuth credentials file (see
 [Credentials](https://github.com/josephlou5/roseingrave#credentials))
 and all required and optional input files.

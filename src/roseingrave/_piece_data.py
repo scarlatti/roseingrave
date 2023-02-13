@@ -11,7 +11,7 @@ from ._shared import fail_on_warning
 
 # ======================================================================
 
-__all__ = ('PieceData',)
+__all__ = ("PieceData",)
 
 # ======================================================================
 
@@ -54,11 +54,11 @@ class SourceData:
         """
         volunteers = self._volunteers
         if has_summary:
-            volunteers['summary'] = self._piece.make_default()
+            volunteers["summary"] = self._piece.make_default()
         return {
-            'name': self._name,
-            'link': self._link,
-            'volunteers': volunteers,
+            "name": self._name,
+            "link": self._link,
+            "volunteers": volunteers,
         }
 
     def add_volunteer(self, email, data):
@@ -72,8 +72,9 @@ class SourceData:
             bool: Whether the addition was successful.
         """
         self._volunteers[email] = {
-            key: val for key, val in data.items()
-            if key not in ('name', 'link')
+            key: val
+            for key, val in data.items()
+            if key not in ("name", "link")
         }
 
 
@@ -88,13 +89,12 @@ class PieceData:
         """
 
         self._bar_count = piece.final_bar_count
-        self._headers = list(piece._template['metaDataFields'].keys())
+        self._headers = list(piece._template["metaDataFields"].keys())
 
         self._name = piece.name
         self._link = piece.link
         self._sources = {
-            source.name: SourceData(self, source)
-            for source in piece.sources
+            source.name: SourceData(self, source) for source in piece.sources
         }
         self._notes = self.make_default(True)
 
@@ -134,44 +134,43 @@ class PieceData:
             Dict: A JSON dict.
         """
         return {
-            'title': self._name,
-            'link': self._link,
-            'sources': [
+            "title": self._name,
+            "link": self._link,
+            "sources": [
                 source.to_json(has_summary)
                 for source in self._sources.values()
             ],
-            'notes': self._notes,
+            "notes": self._notes,
         }
 
     def make_default(self, is_notes=False):
         """Make a JSON dict with the default values."""
 
         if is_notes:
+
             def value():
                 return {}
+
         else:
+
             def value():
                 return ""
 
         # template names
         values = {key: value() for key in self._headers}
         # bars
-        values['bars'] = {
-            str(bar_num + 1): value()
-            for bar_num in range(self._bar_count)
+        values["bars"] = {
+            str(bar_num + 1): value() for bar_num in range(self._bar_count)
         }
         # comments
         if not is_notes:
-            values['comments'] = value()
+            values["comments"] = value()
 
         return values
 
-    def with_defaults(self,
-                      values,
-                      loc,
-                      exclude_comments=False,
-                      is_notes=False
-                      ):
+    def with_defaults(
+        self, values, loc, exclude_comments=False, is_notes=False
+    ):
         """Fix a JSON dict by adding the default values.
         Displays warnings for missing or extra fields.
 
@@ -191,7 +190,7 @@ class PieceData:
 
         fixed = self.make_default(is_notes)
         if exclude_comments:
-            fixed.pop('comments', None)
+            fixed.pop("comments", None)
 
         extra_bars = []
         missing_bars = {}
@@ -199,13 +198,11 @@ class PieceData:
         missing_fields = {key: True for key in fixed.keys()}
 
         # special case: bars
-        if 'bars' in values:
-            missing_fields.pop('bars')
-            fixed_bars = fixed['bars']
-            missing_bars = {
-                bar_num: True for bar_num in fixed_bars.keys()
-            }
-            for bar_num, val in values['bars'].items():
+        if "bars" in values:
+            missing_fields.pop("bars")
+            fixed_bars = fixed["bars"]
+            missing_bars = {bar_num: True for bar_num in fixed_bars.keys()}
+            for bar_num, val in values["bars"].items():
                 if bar_num not in fixed_bars:
                     extra_bars.append(bar_num)
                     continue
@@ -213,7 +210,7 @@ class PieceData:
                 fixed_bars[bar_num] = val
         # save all fields except for name, link, and bars
         for key, val in values.items():
-            if key in ('name', 'link', 'bars'):
+            if key in ("name", "link", "bars"):
                 continue
             if key not in fixed:
                 unknown_fields.append(key)
@@ -227,30 +224,34 @@ class PieceData:
         if len(missing_fields) > 0:
             warning = True
             logger.warning(
-                'Missing fields {} for {}',
-                ','.join(f'"{key}"' for key in missing_fields.keys()),
-                loc
+                "Missing fields {} for {}",
+                ",".join(f'"{key}"' for key in missing_fields.keys()),
+                loc,
             )
         if len(missing_bars) > 0:
             warning = True
             logger.warning(
-                'Missing bar numbers {} for {}',
-                ','.join(missing_bars.keys()), loc
+                "Missing bar numbers {} for {}",
+                ",".join(missing_bars.keys()),
+                loc,
             )
 
         # warn about extra fields
         if len(extra_bars) > 0:
             warning = True
             logger.warning(
-                'Extra bars {} for {} (not in range of 1-{})',
-                ','.join(extra_bars), loc, self._bar_count
+                "Extra bars {} for {} (not in range of 1-{})",
+                ",".join(extra_bars),
+                loc,
+                self._bar_count,
             )
         if len(unknown_fields) > 0:
             warning = True
             logger.warning(
-                'Unknown fields {} for {} '
-                '(not in template definitions file)',
-                ','.join(f'"{key}"' for key in unknown_fields), loc
+                "Unknown fields {} for {} "
+                "(not in template definitions file)",
+                ",".join(f'"{key}"' for key in unknown_fields),
+                loc,
             )
 
         return warning, fixed
@@ -271,34 +272,31 @@ class PieceData:
 
         p_loc = f'volunteer "{email}", piece "{self._name}"'
 
-        link = data['link']
+        link = data["link"]
         warning = False
         if self._link is None:
             if link is not None:
                 warning = True
-                logger.warning(
-                    'Extra piece link "{}" for {}', link, p_loc
-                )
+                logger.warning('Extra piece link "{}" for {}', link, p_loc)
         else:
             if link is None:
                 warning = True
-                logger.warning('Missing piece link for {}', p_loc)
+                logger.warning("Missing piece link for {}", p_loc)
             elif link != self._link:
                 warning = True
-                logger.warning(
-                    'Incorrect piece link "{}" for {}', link, p_loc
-                )
+                logger.warning('Incorrect piece link "{}" for {}', link, p_loc)
         if strict and warning:
             fail_on_warning()
             return False
 
         # sources
-        for name, source in data['sources'].items():
+        for name, source in data["sources"].items():
             if name not in self._sources:
                 logger.warning(
                     'Unknown source "{}" for {} '
-                    '(not in piece definitions file)',
-                    name, p_loc
+                    "(not in piece definitions file)",
+                    name,
+                    p_loc,
                 )
                 if strict:
                     fail_on_warning()
@@ -307,16 +305,16 @@ class PieceData:
             self._sources[name].add_volunteer(email, source)
 
         # notes
-        notes = data['notes']
+        notes = data["notes"]
         # special case: bars
-        for bar_num, val in notes['bars'].items():
-            if val == '':
+        for bar_num, val in notes["bars"].items():
+            if val == "":
                 continue
-            self._notes['bars'][bar_num][email] = val
+            self._notes["bars"][bar_num][email] = val
         for key, val in notes.items():
-            if key == 'bars':
+            if key == "bars":
                 continue
-            if val == '':
+            if val == "":
                 continue
             self._notes[key][email] = val
 

@@ -7,29 +7,26 @@ Handles input files.
 
 from loguru import logger
 
-from ._shared import fail_on_warning, error
-from ._read_write import (
-    _read_default,
-    read_json,
-    write_json,
-    read_settings,
-)
 from ._piece import Piece
 from ._piece_data import PieceData
+from ._read_write import _read_default, read_json, read_settings, write_json
+from ._shared import error, fail_on_warning
 from ._volunteer import Volunteer
 
 # ======================================================================
 
 __all__ = (
-    'read_template',
-    'read_piece_definitions', 'fix_piece_definitions',
-    'read_volunteer_definitions', 'fix_volunteer_definitions',
+    "read_template",
+    "read_piece_definitions",
+    "fix_piece_definitions",
+    "read_volunteer_definitions",
+    "fix_volunteer_definitions",
 )
 
 # ======================================================================
 
 # the options for the "publicAccess" field
-PUBLIC_ACCESS_OPTIONS = (None, 'view', 'edit')
+PUBLIC_ACCESS_OPTIONS = (None, "view", "edit")
 
 
 def read_template(path=None, strict=False):
@@ -55,18 +52,17 @@ def read_template(path=None, strict=False):
     if not success:
         return ERROR_RETURN
 
-    logger.info('Reading template definitions file')
+    logger.info("Reading template definitions file")
 
-    key = 'template'
+    key = "template"
 
     try:
         raw_values = read_json(key, path)
     except (FileNotFoundError, ValueError) as ex:
         return _error(ex)
-    defaults = _read_default('template_definitions.json')
+    defaults = _read_default("template_definitions.json")
     values = {
-        level: {**level_defaults}
-        for level, level_defaults in defaults.items()
+        level: {**level_defaults} for level, level_defaults in defaults.items()
     }
     invalid = False
     warning = False
@@ -75,7 +71,7 @@ def read_template(path=None, strict=False):
 
     # get values from file
     for level, level_values in raw_values.items():
-        if level == 'validation':
+        if level == "validation":
             continue
         if level not in values:
             warning = True
@@ -89,29 +85,27 @@ def read_template(path=None, strict=False):
                 continue
             level_defaults[k] = value
     # validation
-    values['validation'] = {}
-    for k, validation in raw_values.get('validation', {}).items():
-        if k not in values['metaDataFields']:
+    values["validation"] = {}
+    for k, validation in raw_values.get("validation", {}).items():
+        if k not in values["metaDataFields"]:
             warning = True
             logger.warning('"validation": unknown key "{}"', k)
             continue
-        if 'type' not in validation:
+        if "type" not in validation:
             warning = True
             logger.warning('"validation"."{}": no type', k)
             continue
-        v_type = validation['type']
-        if v_type == 'checkbox':
-            values['validation'][k] = {'type': 'checkbox'}
-        elif v_type == 'dropdown':
-            if len(validation.get('values', [])) == 0:
+        v_type = validation["type"]
+        if v_type == "checkbox":
+            values["validation"][k] = {"type": "checkbox"}
+        elif v_type == "dropdown":
+            if len(validation.get("values", [])) == 0:
                 warning = True
-                logger.warning(
-                    '"validation"."{}": no values for dropdown', k
-                )
+                logger.warning('"validation"."{}": no values for dropdown', k)
                 continue
-            values['validation'][k] = {
-                'type': 'dropdown',
-                'values': validation['values'],
+            values["validation"][k] = {
+                "type": "dropdown",
+                "values": validation["values"],
             }
         else:
             warning = True
@@ -121,41 +115,42 @@ def read_template(path=None, strict=False):
 
     # validate values
     # public access options
-    for ss in ('masterSpreadsheet', 'volunteerSpreadsheet'):
-        value = values[ss]['publicAccess']
+    for ss in ("masterSpreadsheet", "volunteerSpreadsheet"):
+        value = values[ss]["publicAccess"]
         if value not in PUBLIC_ACCESS_OPTIONS:
             warning = True
             logger.warning(
                 '"{}"."publicAccess": invalid value "{}" '
                 '(must be null, "view", or "edit")',
-                ss, value
+                ss,
+                value,
             )
             # reset to default
-            values[ss]['publicAccess'] = defaults[ss]['publicAccess']
+            values[ss]["publicAccess"] = defaults[ss]["publicAccess"]
     # volunteer spreadsheet title must have "{email}" at most once
-    ss = 'volunteerSpreadsheet'
-    if values[ss]['title'].count('{email}') > 1:
+    ss = "volunteerSpreadsheet"
+    if values[ss]["title"].count("{email}") > 1:
         invalid = True
-        _error(
-            f'"{ss}"."title": can only contain "{{email}}" at most once'
-        )
+        _error(f'"{ss}"."title": can only contain "{{email}}" at most once')
     # must be a boolean
-    for k in ('shareWithVolunteer', 'resize'):
+    for k in ("shareWithVolunteer", "resize"):
         val = values[ss][k]
         if val not in (True, False):
             warning = True
             logger.warning(
                 '"{}"."{}": invalid value "{}" (must be true or false)',
-                ss, k, val
+                ss,
+                k,
+                val,
             )
             # reset to default
             values[ss][k] = defaults[ss][k]
     # default bar count must be positive
-    if values['values']['defaultBarCount'] <= 0:
+    if values["values"]["defaultBarCount"] <= 0:
         invalid = True
         _error('"values"."defaultBarCount": must be positive')
     # comments row height must be at least 21
-    if values['values']['commentsRowHeight'] < 21:
+    if values["values"]["commentsRowHeight"] < 21:
         invalid = True
         _error('"values"."commentsRowHeight": must be at least 21')
 
@@ -166,6 +161,7 @@ def read_template(path=None, strict=False):
         return ERROR_RETURN
 
     return True, values
+
 
 # ======================================================================
 
@@ -185,21 +181,21 @@ def _piece_definitions(path, template, msg):
     if not success:
         return ERROR_RETURN
 
-    logger.info('{} piece definitions file', msg)
+    logger.info("{} piece definitions file", msg)
 
     try:
-        raw_pieces = read_json('pieces', path)
+        raw_pieces = read_json("pieces", path)
     except (FileNotFoundError, ValueError) as ex:
         return _error(ex)
     if len(raw_pieces) == 0:
-        return _error('no pieces found')
+        return _error("no pieces found")
 
     pieces = {}
     for i, args in enumerate(raw_pieces):
         try:
             piece = Piece(args, template)
         except ValueError as ex:
-            return _error('piece {}: {}', i, ex)
+            return _error("piece {}: {}", i, ex)
 
         name = piece.name
         if name in pieces:
@@ -228,11 +224,7 @@ def _piece_definitions(path, template, msg):
     return True, no_sources, filtered, only_supplemental
 
 
-def read_piece_definitions(template,
-                           path=None,
-                           as_data=False,
-                           as_both=False
-                           ):
+def read_piece_definitions(template, path=None, as_data=False, as_both=False):
     """Read the piece definitions file.
     Repeated pieces and sources will be combined.
     All supplemental sources will be ignored, including pieces with only
@@ -258,15 +250,14 @@ def read_piece_definitions(template,
     """
 
     success, no_sources, pieces, _ = _piece_definitions(
-        path, template, msg='Reading'
+        path, template, msg="Reading"
     )
     if not success or no_sources:
         return False, None
 
     if as_both or as_data:
         pieces_data = {
-            title: PieceData(piece)
-            for title, piece in pieces.items()
+            title: PieceData(piece) for title, piece in pieces.items()
         }
         if as_both:
             return True, (pieces, pieces_data)
@@ -293,7 +284,7 @@ def fix_piece_definitions(path=None):
     ERROR_RETURN = False, None
 
     success, _, pieces, only_supplemental = _piece_definitions(
-        path, None, msg='Fixing'
+        path, None, msg="Fixing"
     )
     if not success:
         return ERROR_RETURN
@@ -303,19 +294,16 @@ def fix_piece_definitions(path=None):
         pieces[title] = piece
 
     if len(pieces) == 0:
-        error('No valid pieces to write back to piece definitions file')
+        error("No valid pieces to write back to piece definitions file")
         return ERROR_RETURN
 
     data = [
-        piece.to_json(include_supplemental=True)
-        for piece in pieces.values()
+        piece.to_json(include_supplemental=True) for piece in pieces.values()
     ]
-    write_json(
-        'pieces', data, path,
-        msg='fixed piece definitions'
-    )
+    write_json("pieces", data, path, msg="fixed piece definitions")
 
     return True, pieces
+
 
 # ======================================================================
 
@@ -337,14 +325,14 @@ def _volunteer_definitions(pieces, path, msg):
     if not success:
         return ERROR_RETURN
 
-    logger.info('{} volunteer definitions file', msg)
+    logger.info("{} volunteer definitions file", msg)
 
     try:
-        raw_volunteers = read_json('volunteers', path)
+        raw_volunteers = read_json("volunteers", path)
     except (FileNotFoundError, ValueError) as ex:
         return _error(ex)
     if len(raw_volunteers) == 0:
-        return _error('no volunteers found')
+        return _error("no volunteers found")
 
     volunteers = {}
     unknown_pieces = False
@@ -352,7 +340,7 @@ def _volunteer_definitions(pieces, path, msg):
         try:
             volunteer = Volunteer(args, pieces)
         except ValueError as ex:
-            return _error('volunteer {}: {}', i, ex)
+            return _error("volunteer {}: {}", i, ex)
 
         email = volunteer.email
         if email in volunteers:
@@ -364,9 +352,7 @@ def _volunteer_definitions(pieces, path, msg):
 
         for piece in volunteer.unknown_pieces:
             unknown_pieces = True
-            logger.warning(
-                'volunteer "{}": unknown piece "{}"', email, piece
-            )
+            logger.warning('volunteer "{}": unknown piece "{}"', email, piece)
 
     filtered = {}
     no_pieces = False
@@ -399,8 +385,9 @@ def read_volunteer_definitions(pieces, path=None, strict=False):
     """
     ERROR_RETURN = False, None
 
-    success, no_pieces, unknown_pieces, volunteers = \
-        _volunteer_definitions(pieces, path, msg='Reading')
+    success, no_pieces, unknown_pieces, volunteers = _volunteer_definitions(
+        pieces, path, msg="Reading"
+    )
     if not success or no_pieces:
         return ERROR_RETURN
     if strict and unknown_pieces:
@@ -427,25 +414,19 @@ def fix_volunteer_definitions(pieces, path=None):
     ERROR_RETURN = False
 
     success, _, _, volunteers = _volunteer_definitions(
-        pieces, path, msg='Fixing'
+        pieces, path, msg="Fixing"
     )
     if not success:
         return ERROR_RETURN
 
     if len(volunteers) == 0:
         error(
-            'No valid volunteers to write back to volunteer '
-            'definitions file'
+            "No valid volunteers to write back to volunteer "
+            "definitions file"
         )
         return ERROR_RETURN
 
-    data = [
-        volunteer.to_json()
-        for volunteer in volunteers.values()
-    ]
-    write_json(
-        'volunteers', data, path,
-        msg='fixed volunteer definitions'
-    )
+    data = [volunteer.to_json() for volunteer in volunteers.values()]
+    write_json("volunteers", data, path, msg="fixed volunteer definitions")
 
     return True

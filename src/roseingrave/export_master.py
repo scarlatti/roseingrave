@@ -26,13 +26,14 @@ from ._piece import Piece
 
 # ======================================================================
 
-__all__ = ('export_master',)
+__all__ = ("export_master",)
 
 # ======================================================================
 
-MASTER_KEY = 'MASTER'
+MASTER_KEY = "MASTER"
 
 # ======================================================================
+
 
 def filter_volunteers(piece_name, piece_volunteers, piece_data):
     removed = set()
@@ -45,69 +46,74 @@ def filter_volunteers(piece_name, piece_volunteers, piece_data):
                 # only log warning once per unknown volunteer
                 logger.warning(
                     'Unknown volunteer "{}" for piece "{}" (not in '
-                    'volunteer definitions file)',
-                    volunteer, piece_name
+                    "volunteer definitions file)",
+                    volunteer,
+                    piece_name,
                 )
                 removed.add(volunteer)
             obj.pop(volunteer)
 
     # remove from sources
-    for source in piece_data['sources']:
-        remove_volunteers(source['volunteers'])
+    for source in piece_data["sources"]:
+        remove_volunteers(source["volunteers"])
         # can't do anything about "summary", since that's inputted from
         # the master user
     # remove from notes
-    for key, volunteer_data in piece_data['notes'].items():
-        if key == 'bars':
+    for key, volunteer_data in piece_data["notes"].items():
+        if key == "bars":
             # special case: bars
             for bar_data in volunteer_data.values():
                 remove_volunteers(bar_data)
         else:
             remove_volunteers(volunteer_data)
 
+
 # ======================================================================
 
 
-@click.command(
-    'export_master',
-    help='Export the master spreadsheet.'
+@click.command("export_master", help="Export the master spreadsheet.")
+@click.option(
+    "-si", type=str, help="A filepath to replace the spreadsheets index file."
 )
 @click.option(
-    '-si', type=str,
-    help='A filepath to replace the spreadsheets index file.'
+    "-td",
+    type=str,
+    help="A filepath to replace the template definitions file.",
 )
 @click.option(
-    '-td', type=str,
-    help='A filepath to replace the template definitions file.'
+    "-pd", type=str, help="A filepath to replace the piece definitions file."
 )
 @click.option(
-    '-pd', type=str,
-    help='A filepath to replace the piece definitions file.'
+    "-vd",
+    type=str,
+    help="A filepath to replace the volunteer definitions file.",
 )
 @click.option(
-    '-vd', type=str,
-    help='A filepath to replace the volunteer definitions file.'
+    "-s",
+    "summary_path",
+    type=str,
+    help="A filepath to replace the summary file.",
 )
 @click.option(
-    '-s', 'summary_path', type=str,
-    help='A filepath to replace the summary file.'
-)
-@click.option(
-    '-ek', '--export-known-only',
-    is_flag=True, default=False, flag_value=True,
+    "-ek",
+    "--export-known-only",
+    is_flag=True,
+    default=False,
+    flag_value=True,
     help=(
-        'Export only the volunteers and pieces that appear in the '
-        'definition files. Requires piece definitions file and '
-        'volunteer definitions file. Default is False.'
-    )
+        "Export only the volunteers and pieces that appear in the "
+        "definition files. Requires piece definitions file and "
+        "volunteer definitions file. Default is False."
+    ),
 )
 @click.option(
-    '--strict', is_flag=True, default=False, flag_value=True,
-    help='Fail on warnings instead of only displaying them.'
+    "--strict",
+    is_flag=True,
+    default=False,
+    flag_value=True,
+    help="Fail on warnings instead of only displaying them.",
 )
-def export_master(
-    si, td, pd, vd, summary_path, export_known_only, strict
-):
+def export_master(si, td, pd, vd, summary_path, export_known_only, strict):
     """Export the master spreadsheet.
 
     Args:
@@ -137,7 +143,7 @@ def export_master(
     if MASTER_KEY not in spreadsheets:
         error(
             f'Master spreadsheet (key "{MASTER_KEY}") not found in '
-            'spreadsheets index file'
+            "spreadsheets index file"
         )
         return
 
@@ -150,15 +156,11 @@ def export_master(
         if not success:
             return
 
-        success, volunteers = read_volunteer_definitions(
-            pieces, vd, strict
-        )
+        success, volunteers = read_volunteer_definitions(pieces, vd, strict)
         if not success:
             return
 
-        piece_volunteers = {
-            piece_name: set() for piece_name in pieces.keys()
-        }
+        piece_volunteers = {piece_name: set() for piece_name in pieces.keys()}
         for email, volunteer in volunteers.items():
             # the volunteer's pieces definitely exist
             for piece_name in volunteer.pieces:
@@ -166,9 +168,7 @@ def export_master(
     else:
         piece_volunteers = None
 
-    success, spreadsheet = open_spreadsheet(
-        gc, spreadsheets[MASTER_KEY]
-    )
+    success, spreadsheet = open_spreadsheet(gc, spreadsheets[MASTER_KEY])
     if not success:
         return
 
@@ -178,13 +178,11 @@ def export_master(
             if sheet.title not in piece_volunteers:
                 logger.warning(
                     'Unknown piece "{}" (not in piece definitions '
-                    'file: skipping sheet',
-                    sheet.title
+                    "file: skipping sheet",
+                    sheet.title,
                 )
                 continue
-        success, piece_data = Piece.export_master_sheet(
-            sheet, template
-        )
+        success, piece_data = Piece.export_master_sheet(sheet, template)
         if not success:
             if strict:
                 fail_on_warning()
@@ -201,4 +199,4 @@ def export_master(
         if not success:
             return
 
-    logger.info('Done')
+    logger.info("Done")

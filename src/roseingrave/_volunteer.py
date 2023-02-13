@@ -5,7 +5,7 @@ The Volunteer class.
 
 # ======================================================================
 
-__all__ = ('Volunteer',)
+__all__ = ("Volunteer",)
 
 # ======================================================================
 
@@ -24,14 +24,14 @@ class Volunteer:
             ValueError: If any required key is not found.
         """
 
-        for key in ('email', 'pieces'):
+        for key in ("email", "pieces"):
             if key not in kwargs:
                 raise ValueError(f'key "{key}" not found')
 
-        self._email = kwargs['email']
+        self._email = kwargs["email"]
         self._pieces = {}
         self._unknown = []
-        for piece_name in kwargs['pieces']:
+        for piece_name in kwargs["pieces"]:
             if piece_name in self._pieces:
                 continue
             piece = known_pieces.get(piece_name, None)
@@ -61,8 +61,8 @@ class Volunteer:
                 self._pieces[piece_name] = True
 
     def to_json(self):
-        """Return a JSON reprsentation of this volunteer."""
+        """Return a JSON representation of this volunteer."""
         return {
-            'email': self._email,
-            'pieces': list(self._pieces.keys()),
+            "email": self._email,
+            "pieces": list(self._pieces.keys()),
         }
