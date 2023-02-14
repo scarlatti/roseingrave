@@ -852,7 +852,24 @@ def _format_sheet(
             )
         ),
     }
+    user_input_range_format = {
+        "cell": {
+            "userEnteredFormat": {
+                # no automatic number formatting
+                "numberFormat": {"type": "TEXT"},
+                # wrap all the text
+                "wrapStrategy": "WRAP",
+            },
+        },
+        "fields": ",".join(
+            (
+                "userEnteredFormat.numberFormat",
+                "userEnteredFormat.wrapStrategy",
+            )
+        ),
+    }
     source_end_column = _col_str(notes_col - 1)
+    notes_col_str = _col_str(notes_col)
     range_formats = [
         # first row (piece name, sources, notes, possible supplemental)
         ("A1:1", bolded),
@@ -864,6 +881,8 @@ def _format_sheet(
         (f"A{comments_row}", middle_bolded),
         # comments row
         (f"B{comments_row}:{comments_row}", wrapped_top_align),
+        # everything with user input, include the notes column
+        (f"B2:{notes_col_str}", user_input_range_format),
     ]
     if is_master:
         # make all summary cells be centered
