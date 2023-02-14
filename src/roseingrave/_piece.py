@@ -1128,29 +1128,43 @@ def _format_sheet(
 
     # protect the first row and column of non-master sheets
     if not is_master:
-        requests.append(
-            {
-                "addProtectedRange": {
-                    "protectedRange": {
-                        # protect entire sheet
-                        "range": {"sheetId": sheet_id},
-                        "description": "",
-                        "warningOnly": False,
-                        "unprotectedRanges": [
-                            {
-                                # exclude where the volunteer will edit
-                                "sheetId": sheet_id,
-                                "startRowIndex": header_end,
-                                "startColumnIndex": 1,
-                            },
-                        ],
+        # get owner of spreadsheet
+        owner = None
+        for user in spreadsheet.list_permissions():
+            if user["role"] == "owner":
+                owner = user["emailAddress"]
+                break
+        if owner is None:
+            # likely will never happen
+            logger.error(
+                'Could not find owner of spreadsheet "{}"', spreadsheet.title
+            )
+        else:
+            requests.append(
+                {
+                    "addProtectedRange": {
+                        "protectedRange": {
+                            # protect entire sheet
+                            "range": {"sheetId": sheet_id},
+                            "description": "",
+                            "warningOnly": False,
+                            "unprotectedRanges": [
+                                {
+                                    # exclude where the volunteer will edit
+                                    "sheetId": sheet_id,
+                                    "startRowIndex": header_end,
+                                    "startColumnIndex": 1,
+                                },
+                            ],
+                            "editors": {"users": [owner]},
+                        }
                     }
                 }
-            }
-        )
+            )
 
-    body = {"requests": requests}
-    spreadsheet.batch_update(body)
+    if len(requests) > 0:
+        body = {"requests": requests}
+        spreadsheet.batch_update(body)
 
 
 # ======================================================================

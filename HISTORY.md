@@ -3,6 +3,8 @@
 ## v0.10.2 (unreleased)
 
 - Moved repo to [`scarlatti` organization](https://github.com/scarlatti)
+- Fix protected range bug: specify emails of editors (which is only the owner)
+  (https://github.com/scarlatti/roseingrave/issues/13)
 
 ## v0.10.1 (2023-01-23)
 
