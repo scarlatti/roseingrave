@@ -3,7 +3,7 @@
 Massively scalable musical source comparator.
 
 See the
-[documentation](https://github.com/josephlou5/roseingrave/blob/main/Documentation.md)
+[documentation](https://github.com/scarlatti/roseingrave/blob/main/Documentation.md)
 for detailed documentation.
 
 ## Installation
@@ -22,11 +22,11 @@ $ roseingrave --help
 
 Create a folder to store all your input/output files. In this folder, place your
 OAuth credentials file (see
-[Credentials](https://github.com/josephlou5/roseingrave#credentials))
+[Credentials](https://github.com/scarlatti/roseingrave#credentials))
 and all required and optional input files.
 
 See the
-[documentation](https://github.com/josephlou5/roseingrave/blob/main/Documentation.md)
+[documentation](https://github.com/scarlatti/roseingrave/blob/main/Documentation.md)
 for customizing filepaths and the expected input file formats.
 
 ## Credentials
@@ -66,7 +66,7 @@ To enable the OAuth Client, follow these steps:
     created. Click the download button at the end of the row.
 17. Rename the file to `credentials.json` and place it in the root directory of
     where you'll be running the commands. (You can customize this in the
-    [settings](https://github.com/josephlou5/roseingrave/blob/main/Documentation.md#settings-optional)
+    [settings](https://github.com/scarlatti/roseingrave/blob/main/Documentation.md#settings-optional)
     file).
 
 If you've never authorized the app or if your authorization has expired, you'll
@@ -81,10 +81,10 @@ created in the same directory as `"credentials"`.
 ## Basic Usage
 
 Create the piece definitions and volunteer definitions files as explained in the
-[documentation](https://github.com/josephlou5/roseingrave/blob/main/Documentation.md#input-files).
+[documentation](https://github.com/scarlatti/roseingrave/blob/main/Documentation.md#input-files).
 If desired, create the settings file and/or the template file. Save all the
 files in the proper locations as defined by the
-[default settings file](https://github.com/josephlou5/roseingrave/blob/main/src/roseingrave/defaults/roseingrave.json)
+[default settings file](https://github.com/scarlatti/roseingrave/blob/main/src/roseingrave/defaults/roseingrave.json)
 or by your own settings file.
 
 Based on your definition files, create the volunteer spreadsheets:
@@ -125,5 +125,5 @@ $ roseingrave export_master
 ```
 
 See the
-[commands documentation](https://github.com/josephlou5/roseingrave/blob/main/Documentation.md#commands)
+[commands documentation](https://github.com/scarlatti/roseingrave/blob/main/Documentation.md#commands)
 for all commands and their arguments and options.

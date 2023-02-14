@@ -10,7 +10,7 @@ classifiers = [
   "Topic :: Software Development :: Libraries :: Python Modules",
 ]
 description = "A massively scalable document source comparator, using Google Spreadsheets API + Python."
-homepage = "https://github.com/josephlou5/roseingrave"
+homepage = "https://github.com/scarlatti/roseingrave"
 include = [
   "README.md",
 ]
@@ -20,7 +20,7 @@ keywords = [
 license = "LGPL-3.0-or-later"
 name = "roseingrave"
 readme = "README.md"
-repository = "https://github.com/josephlou5/roseingrave"
+repository = "https://github.com/scarlatti/roseingrave"
 version = "0.10.1"
 
 [tool.poetry.scripts]

@@ -28,7 +28,7 @@ This is the documentation for the `roseingrave` package.
 
 The `roseingrave.json` settings file defines alternative names for the input and
 output files used in the commands. The default configuration can be found
-[here](https://github.com/josephlou5/roseingrave/blob/main/src/roseingrave/defaults/roseingrave.json).
+[here](https://github.com/scarlatti/roseingrave/blob/main/src/roseingrave/defaults/roseingrave.json).
 
 If included, this file must be placed in the root folder from where you run the
 commands. Its location cannot be customized. All the paths referenced in this
@@ -52,7 +52,7 @@ In the following, file names/paths will be referenced by its corresponding key.
 
 The `"template"` file defines the names of rows or columns and other values to
 use for created spreadsheets. The default values can be found
-[here](https://github.com/josephlou5/roseingrave/blob/main/src/roseingrave/defaults/template_definitions.json).
+[here](https://github.com/scarlatti/roseingrave/blob/main/src/roseingrave/defaults/template_definitions.json).
 
 The `"masterSpreadsheet"` and `"volunteerSpreadsheet"` values define information
 for the master and volunteer spreadsheets respectively:
@@ -101,7 +101,7 @@ of choices or it may be a checkbox. You must use the corresponding key in
 ```
 
 Also see
-[`validation_example.json`](https://github.com/josephlou5/roseingrave/blob/main/examples/validation_example.json)
+[`validation_example.json`](https://github.com/scarlatti/roseingrave/blob/main/examples/validation_example.json)
 for a larger example.
 
 Each field under `"commentFields"` has the following meaning:
