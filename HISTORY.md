@@ -1,6 +1,6 @@
 # Version History
 
-## v0.10.2 (unreleased)
+## v0.10.2 (2023-02-15)
 
 - Moved repo to [`scarlatti` organization](https://github.com/scarlatti)
 - Fix protected range bug: specify emails of editors (which is only the owner)
