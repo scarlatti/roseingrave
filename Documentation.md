@@ -16,13 +16,13 @@ This is the documentation for the `roseingrave` package.
   - [`"summary"`](#summary)
 - [Commands](#commands)
   - [`reauth`](#reauth)
-  - [`fix_input`](#fixinput)
-  - [`create_sheet`](#createsheet)
-  - [`volunteer_summary`](#volunteersummary)
-  - [`piece_summary`](#piecesummary)
-  - [`compile_pieces`](#compilepieces)
-  - [`import_master`](#importmaster)
-  - [`export_master`](#exportmaster)
+  - [`fix_input`](#fix_input)
+  - [`create_sheet`](#create_sheet)
+  - [`volunteer_summary`](#volunteer_summary)
+  - [`piece_summary`](#piece_summary)
+  - [`compile_pieces`](#compile_pieces)
+  - [`import_master`](#import_master)
+  - [`export_master`](#export_master)
 
 ## Settings (optional)
 
@@ -281,7 +281,9 @@ Create volunteer spreadsheets.
 Requires `"template"`, `"pieces"`, and `"volunteers"`. Outputs created
 spreadsheet links to `"spreadsheetsIndex"`.
 
-If any volunteers already exist in `"spreadsheetsIndex"`, they will be skipped.
+If any given volunteers already exist in `"spreadsheetsIndex"` and `--extend`
+or `--replace` are not set, they will be skipped. If `--new` is set, new
+spreadsheets will be created for all given volunteers.
 
 #### Arguments
 
@@ -291,9 +293,13 @@ If any volunteers already exist in `"spreadsheetsIndex"`, they will be skipped.
 
 #### Options
 
-- `-r`/`--replace` (flag): Replace existing volunteer spreadsheets.
+- `-e`/`--extend` (flag): Extend existing sheets with missing pieces.
+  This will still create new spreadsheets.
+  Note that this cannot be set when `--replace` or `--new` are set.
+- `-r`/`--replace` (flag): Wipe and replace existing volunteer spreadsheets.
   This will not create a new spreadsheet, but will wipe all current content in
   the existing spreadsheet.
+  Note that this has no effect when `--new` is set.
 - `-n`/`--new` (flag): Create new spreadsheets for all volunteers.
 - `-td`: A filepath to replace `"template"`.
 - `-pd`: A filepath to replace `"pieces"`.
