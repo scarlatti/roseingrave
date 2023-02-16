@@ -8,23 +8,20 @@ Create a volunteer spreadsheet.
 import click
 from loguru import logger
 
-from ._shared import fail_on_warning
 from ._input_files import (
-    read_template,
     read_piece_definitions,
+    read_template,
     read_volunteer_definitions,
 )
-from ._output_files import (
-    read_spreadsheets_index,
-    write_spreadsheets_index,
-)
+from ._output_files import read_spreadsheets_index, write_spreadsheets_index
+from ._shared import fail_on_warning
 from ._sheets import (
-    gspread_auth,
-    create_spreadsheet,
-    open_spreadsheet,
-    add_temp_sheet,
-    share_spreadsheet,
     add_permissions,
+    add_temp_sheet,
+    create_spreadsheet,
+    gspread_auth,
+    open_spreadsheet,
+    share_spreadsheet,
 )
 
 # ======================================================================
@@ -33,15 +30,69 @@ __all__ = ("create_sheet",)
 
 # ======================================================================
 
+INVITATION_MESSAGE = (
+    "This is an invitation for you to collaborate on a crowd-sourcing "
+    "spreadsheet for a project run by Roseingrave. Thank you for accepting "
+    "our invitation as a volunteer."
+)
 
-def create_spreadsheets(gc, spreadsheets, template, emails):
+# ======================================================================
+
+
+class VolunteerSpreadsheet:
+    """Represents a volunteer's spreadsheet."""
+
+    def __init__(self, volunteer, url=None, extend=False):
+        self._volunteer = volunteer
+        self._url = url
+        self._spreadsheet = None
+        # If False, the spreadsheet will be wiped first
+        self._extend_spreadsheet = extend
+
+    @property
+    def volunteer(self):
+        return self._volunteer
+
+    @property
+    def extend_spreadsheet(self):
+        return self._extend_spreadsheet
+
+    def add_created_spreadsheet(self, spreadsheet):
+        """Adds the given spreadsheet for this volunteer."""
+        self._url = spreadsheet.url
+        self._spreadsheet = spreadsheet
+
+    def get_spreadsheet(self, gc):
+        """Gets this volunteer's spreadsheet, opening it if necessary."""
+        if self._spreadsheet is None:
+            if self._url is None:
+                raise RuntimeError(
+                    "missing spreadsheet url for volunteer "
+                    f'"{self._volunteer.email}"'
+                )
+            success, spreadsheet = open_spreadsheet(gc, self._url)
+            if not success:
+                return success, None
+            self._spreadsheet = spreadsheet
+        return True, self._spreadsheet
+
+
+# ======================================================================
+
+
+def create_spreadsheets(
+    gc, spreadsheets, volunteer_spreadsheets, template, emails
+):
     """Create spreadsheets for the given volunteers.
 
     Args:
         gc (gspread.Client): The client.
-        spreadsheets (Dict[str, str]): The existing spreadsheets.
+        spreadsheets (Dict[str, str]): The existing spreadsheet urls.
+        volunteer_spreadsheets (Dict[str, VolunteerSpreadsheet]):
+            The VolunteerSpreadsheet objects for each volunteer.
         template (Dict): The template settings.
-        emails (Iterable[str]): The emails of the volunteers.
+        emails (Iterable[str]): The emails of the volunteers to create
+            spreadsheets for.
 
     Returns:
         bool: Whether the creations were successful.
@@ -81,20 +132,15 @@ def create_spreadsheets(gc, spreadsheets, template, emails):
 
         if share_with_volunteer:
             # make volunteer an editor
-            msg = (
-                "This is an invitation for you to collaborate on a "
-                "crowd-sourcing spreadsheet for a project run by "
-                "Roseingrave. Thank you for accepting our invitation "
-                "as a volunteer."
-            )
             success = share_spreadsheet(
-                spreadsheet, email, "edit", notify=True, msg=msg
+                spreadsheet, email, "edit", notify=True, msg=INVITATION_MESSAGE
             )
             if not success:
                 delete_created()
                 return False
 
         spreadsheets[email] = spreadsheet.url
+        volunteer_spreadsheets[email].add_created_spreadsheet(spreadsheet)
 
     return True
 
@@ -102,13 +148,13 @@ def create_spreadsheets(gc, spreadsheets, template, emails):
 # ======================================================================
 
 
-def populate_spreadsheets(gc, spreadsheets, volunteers, pieces, strict):
+def populate_spreadsheets(gc, volunteer_spreadsheets, pieces, strict):
     """Populate the spreadsheets with the volunteer pieces.
 
     Args:
         gc (gspread.Client): The client.
-        spreadsheets (Dict[str, str]): The spreadsheets.
-        volunteers (Dict[str, Volunteer]): The volunteers.
+        volunteer_spreadsheets (Dict[str, VolunteerSpreadsheet]):
+            The VolunteerSpreadsheet objects for each volunteer.
         pieces (Dict[str, Piece]): The pieces.
         strict (bool): Whether to fail on warnings instead of only
             displaying them.
@@ -122,32 +168,65 @@ def populate_spreadsheets(gc, spreadsheets, volunteers, pieces, strict):
     # piece name -> sheet object
     sheets = {}
 
-    for email, volunteer in volunteers.items():
+    for email, volunteer_spreadsheet in volunteer_spreadsheets.items():
         logger.debug('Working on volunteer "{}"', email)
+        volunteer = volunteer_spreadsheet.volunteer
 
-        link = spreadsheets[email]
-        success, spreadsheet = open_spreadsheet(gc, link)
+        success, spreadsheet = volunteer_spreadsheet.get_spreadsheet(gc)
         if not success:
             if strict:
                 fail_on_warning()
                 return False
             continue
 
-        # delete existing sheets
-        existing_sheets = list(spreadsheet.worksheets())
-        invalid_names = set(volunteer.pieces) | set(
-            sheet.title for sheet in existing_sheets
-        )
-        success, temp_sheet = add_temp_sheet(spreadsheet, invalid_names)
-        if not success:
-            if strict:
-                fail_on_warning()
-                return False
-            continue
-        for sheet in existing_sheets:
-            spreadsheet.del_worksheet(sheet)
+        existing_sheets = {
+            sheet.title: sheet for sheet in spreadsheet.worksheets()
+        }
+        temp_sheet = None
 
+        sheet_names_set = set(existing_sheets.keys())
+        piece_names_set = set(volunteer.pieces)
+        if volunteer_spreadsheet.extend_spreadsheet:
+            # extend the sheet: only create the missing pieces
+            # check for extra sheets that don't match the piece names
+            extra_sheets = sheet_names_set - piece_names_set
+            if len(extra_sheets) > 0:
+                logger.warning(
+                    "Found extra piece sheets: {}",
+                    ",".join(f'"{sheet_name}"' for sheet_name in extra_sheets),
+                )
+                if strict:
+                    fail_on_warning()
+                    return False
+        else:
+            # delete existing sheets
+            if len(existing_sheets) == 1:
+                # no need to add temp sheet: use the only sheet
+                _, temp_sheet = existing_sheets.popitem()
+            else:
+                # add a temp sheet
+                invalid_names = piece_names_set | sheet_names_set
+                success, temp_sheet = add_temp_sheet(
+                    spreadsheet, invalid_names
+                )
+                if not success:
+                    if strict:
+                        fail_on_warning()
+                        return False
+                    continue
+                for sheet in existing_sheets.values():
+                    spreadsheet.del_worksheet(sheet)
+            existing_sheets.clear()
+
+        # create the piece sheets
+        worksheets_in_piece_order = []
         for piece_name in volunteer.pieces:
+            if piece_name in existing_sheets:
+                worksheets_in_piece_order.append(existing_sheets[piece_name])
+                logger.debug(
+                    'Skipping piece "{}": already exists in sheet', piece_name
+                )
+                continue
             if piece_name not in sheets:
                 logger.debug('Creating sheet for piece "{}"', piece_name)
                 sheet = pieces[piece_name].create_sheet(spreadsheet)
@@ -159,9 +238,14 @@ def populate_spreadsheets(gc, spreadsheets, volunteers, pieces, strict):
                 # update sheet title to piece name
                 sheet = spreadsheet.get_worksheet_by_id(data["sheetId"])
                 sheet.update_title(piece_name)
+            worksheets_in_piece_order.append(sheet)
 
         # delete temp sheet
-        spreadsheet.del_worksheet(temp_sheet)
+        if temp_sheet is not None:
+            spreadsheet.del_worksheet(temp_sheet)
+
+        # reorder sheets according to piece order
+        spreadsheet.reorder_worksheets(worksheets_in_piece_order)
 
     return True
 
@@ -175,12 +259,27 @@ def populate_spreadsheets(gc, spreadsheets, volunteers, pieces, strict):
 )
 @click.argument("emails", type=str, nargs=-1)
 @click.option(
+    "-e",
+    "--extend",
+    is_flag=True,
+    default=False,
+    flag_value=True,
+    help=(
+        "Extend existing sheets with missing pieces. "
+        "Cannot be set when `--replace` or `--new` is set."
+    ),
+)
+@click.option(
     "-r",
     "--replace",
     is_flag=True,
     default=False,
     flag_value=True,
-    help="Replace existing volunteer spreadsheets.",
+    help=(
+        "Wipe and replace existing volunteer spreadsheets. "
+        "Cannot be set when `--extend` is set. "
+        "Has no effect when `--new` is set."
+    ),
 )
 @click.option(
     "-n",
@@ -188,7 +287,10 @@ def populate_spreadsheets(gc, spreadsheets, volunteers, pieces, strict):
     is_flag=True,
     default=False,
     flag_value=True,
-    help="Create new spreadsheets for all volunteers.",
+    help=(
+        "Create new spreadsheets for all volunteers. "
+        "Cannot be set when `--extend` is set."
+    ),
 )
 @click.option(
     "-td",
@@ -213,17 +315,24 @@ def populate_spreadsheets(gc, spreadsheets, volunteers, pieces, strict):
     flag_value=True,
     help="Fail on warnings instead of only displaying them.",
 )
-def create_sheet(emails, replace, new, td, pd, vd, si, strict):
+def create_sheet(emails, extend, replace, new, td, pd, vd, si, strict):
     """Create volunteer spreadsheets.
 
     Args:
         emails (Tuple[str, ...]): The volunteers to create spreadsheets
             for. If none given, creates spreadsheets for all volunteers.
-        replace (bool): Whether to replace existing volunteer
+        extend (bool): Whether to extend existing sheets with missing
+            pieces. New sheets will still be created.
+            Cannot be True when `replace` or `new` is True.
+            Default is False.
+        replace (bool): Whether to wipe and replace existing volunteer
             spreadsheets.
+            Cannot be True when `extend` is True.
+            Has no effect when `new` is True.
             Default is False.
         new (bool): Whether to create new spreadsheets for all
             volunteers.
+            Cannot be True when `extend` is True.
             Default is False.
         td (str): A filepath to replace the template definitions file.
         pd (str): A filepath to replace the piece definitions file.
@@ -233,6 +342,11 @@ def create_sheet(emails, replace, new, td, pd, vd, si, strict):
             displaying them.
             Default is False.
     """
+    if extend and (replace or new):
+        logger.error("`extend` can only be True on its own")
+        return
+    if replace and new:
+        logger.warning("`--replace` has no effect since `--new` is set")
 
     success, gc = gspread_auth()
     if not success:
@@ -257,23 +371,29 @@ def create_sheet(emails, replace, new, td, pd, vd, si, strict):
     if len(emails) > 0:
         # filter volunteers in `emails`
         filtered = {}
+        email_not_found = False
         for email in emails:
             # don't allow this to update the master spreadsheet
+            # this technically won't change the actual behavior, since
+            # there is no "MASTER" volunteer email
             if email == "MASTER":
                 continue
             if email not in volunteers:
+                email_not_found = True
                 logger.warning(
-                    'Volunteer "{}" not found in volunteer definitions '
-                    "file",
+                    'Volunteer "{}" not found in volunteer definitions file',
                     email,
                 )
                 continue
             filtered[email] = volunteers[email]
+        if strict and email_not_found:
+            fail_on_warning()
+            return
         volunteers = filtered
 
     if new:
-        # create new spreadsheets for all volunteers,
-        # even if they already have a spreadsheet
+        # create new spreadsheets for all volunteers, even if they
+        # already have a spreadsheet
         create_for = set(volunteers.keys())
     else:
         # don't create new for emails that already have a spreadsheet
@@ -282,12 +402,15 @@ def create_sheet(emails, replace, new, td, pd, vd, si, strict):
         }
         create_for = set(volunteers.keys()) - already_exist
 
-        # if `replace` is false, don't edit existing spreadsheets
-        if not replace:
+        if extend or replace:
+            # process the existing spreadsheets
+            pass
+        else:
+            # remove existing spreadsheets: don't edit them
             for email in already_exist:
                 logger.debug(
-                    'Volunteer "{}" being skipped '
-                    "(already in spreadsheets index file)",
+                    'Skipping volunteer "{}": '
+                    "already in spreadsheets index file",
                     email,
                 )
                 volunteers.pop(email)
@@ -296,15 +419,28 @@ def create_sheet(emails, replace, new, td, pd, vd, si, strict):
         logger.info("No volunteers to create spreadsheets for")
         return
 
+    volunteer_spreadsheets = {}
+    for email, volunteer in volunteers.items():
+        if email in spreadsheets:
+            # volunteer has existing spreadsheet
+            url = spreadsheets[email]
+            extend_spreadsheet = extend
+        else:
+            url = None
+            extend_spreadsheet = False
+        volunteer_spreadsheets[email] = VolunteerSpreadsheet(
+            volunteer, url=url, extend=extend_spreadsheet
+        )
+
     # create new spreadsheets
-    success = create_spreadsheets(gc, spreadsheets, template, create_for)
+    success = create_spreadsheets(
+        gc, spreadsheets, volunteer_spreadsheets, template, create_for
+    )
     if not success:
         return
 
     # populate spreadsheets
-    success = populate_spreadsheets(
-        gc, spreadsheets, volunteers, pieces, strict
-    )
+    success = populate_spreadsheets(gc, volunteer_spreadsheets, pieces, strict)
     if not success:
         return
 
