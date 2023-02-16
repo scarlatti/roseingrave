@@ -1,6 +1,6 @@
 # Version History
 
-## v0.11.0 (unreleased)
+## v0.11.0 (2023-02-16)
 
 - Added `--extend` option to `create_sheet` command to extend a volunteer
   spreadsheet with missing pieces
