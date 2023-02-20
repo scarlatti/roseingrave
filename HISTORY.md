@@ -1,6 +1,6 @@
 # Version History
 
-## v0.12.0 (unreleased)
+## v0.12.0 (2023-02-20)
 
 - Deprecated any mention of the "master" spreadsheet
   (https://github.com/scarlatti/roseingrave/issues/17)
