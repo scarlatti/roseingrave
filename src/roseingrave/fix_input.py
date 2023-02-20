@@ -8,19 +8,15 @@ Fixes input files.
 import click
 from loguru import logger
 
-from ._shared import error
-from ._read_write import (
-    fix_settings,
-)
 from ._input_files import (
-    read_template,
-    read_piece_definitions,
     fix_piece_definitions,
     fix_volunteer_definitions,
+    read_piece_definitions,
+    read_template,
 )
-from ._output_files import (
-    fix_spreadsheets_index,
-)
+from ._output_files import fix_spreadsheets_index
+from ._read_write import fix_settings
+from ._shared import error
 
 # ======================================================================
 
