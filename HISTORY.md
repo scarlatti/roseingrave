@@ -1,5 +1,12 @@
 # Version History
 
+## v0.12.0 (unreleased)
+
+- Deprecated any mention of the "master" spreadsheet
+  (https://github.com/scarlatti/roseingrave/issues/17)
+  - Users should use "summary" instead
+  - This will be fully removed in v1.0.0
+
 ## v0.11.0 (2023-02-16)
 
 - Added `--extend` option to `create_sheet` command to extend a volunteer

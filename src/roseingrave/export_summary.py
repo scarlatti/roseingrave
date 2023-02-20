@@ -1,6 +1,6 @@
 """
-export_master.py
-Export the master spreadsheet.
+export_summary.py
+Export the summary spreadsheet.
 """
 
 # ======================================================================
@@ -8,29 +8,24 @@ Export the master spreadsheet.
 import click
 from loguru import logger
 
-from ._shared import fail_on_warning, error
 from ._input_files import (
-    read_template,
     read_piece_definitions,
+    read_template,
     read_volunteer_definitions,
 )
 from ._output_files import (
+    SI_SUMMARY_KEY,
     read_spreadsheets_index,
     write_summary,
 )
-from ._sheets import (
-    gspread_auth,
-    open_spreadsheet,
-)
 from ._piece import Piece
+from ._shared import error, fail_on_warning
+from ._sheets import gspread_auth, open_spreadsheet
 
 # ======================================================================
 
-__all__ = ("export_master",)
-
-# ======================================================================
-
-MASTER_KEY = "MASTER"
+# DEPRECATED: REMOVE IN v1.0.0
+__all__ = ("export_summary", "export_master")
 
 # ======================================================================
 
@@ -57,7 +52,7 @@ def filter_volunteers(piece_name, piece_volunteers, piece_data):
     for source in piece_data["sources"]:
         remove_volunteers(source["volunteers"])
         # can't do anything about "summary", since that's inputted from
-        # the master user
+        # the user
     # remove from notes
     for key, volunteer_data in piece_data["notes"].items():
         if key == "bars":
@@ -71,7 +66,7 @@ def filter_volunteers(piece_name, piece_volunteers, piece_data):
 # ======================================================================
 
 
-@click.command("export_master", help="Export the master spreadsheet.")
+@click.command("export_summary", help="Export the summary spreadsheet.")
 @click.option(
     "-si", type=str, help="A filepath to replace the spreadsheets index file."
 )
@@ -113,8 +108,8 @@ def filter_volunteers(piece_name, piece_volunteers, piece_data):
     flag_value=True,
     help="Fail on warnings instead of only displaying them.",
 )
-def export_master(si, td, pd, vd, summary_path, export_known_only, strict):
-    """Export the master spreadsheet.
+def export_summary(si, td, pd, vd, summary_path, export_known_only, strict):
+    """Export the summary spreadsheet.
 
     Args:
         si (str): A filepath to replace the spreadsheets index file.
@@ -140,9 +135,9 @@ def export_master(si, td, pd, vd, summary_path, export_known_only, strict):
     if not success:
         return
 
-    if MASTER_KEY not in spreadsheets:
+    if SI_SUMMARY_KEY not in spreadsheets:
         error(
-            f'Master spreadsheet (key "{MASTER_KEY}") not found in '
+            f'Summary spreadsheet (key "{SI_SUMMARY_KEY}") not found in '
             "spreadsheets index file"
         )
         return
@@ -168,7 +163,7 @@ def export_master(si, td, pd, vd, summary_path, export_known_only, strict):
     else:
         piece_volunteers = None
 
-    success, spreadsheet = open_spreadsheet(gc, spreadsheets[MASTER_KEY])
+    success, spreadsheet = open_spreadsheet(gc, spreadsheets[SI_SUMMARY_KEY])
     if not success:
         return
 
@@ -182,7 +177,7 @@ def export_master(si, td, pd, vd, summary_path, export_known_only, strict):
                     sheet.title,
                 )
                 continue
-        success, piece_data = Piece.export_master_sheet(sheet, template)
+        success, piece_data = Piece.export_summary_sheet(sheet, template)
         if not success:
             if strict:
                 fail_on_warning()
@@ -200,3 +195,55 @@ def export_master(si, td, pd, vd, summary_path, export_known_only, strict):
             return
 
     logger.info("Done")
+
+
+# DEPRECATED: REMOVE IN v1.0.0
+# For backward compatibility, the command with the deprecated name
+@click.command(
+    "export_master", help="DEPRECATED: Use `export_summary` instead."
+)
+@click.option(
+    "-si", type=str, help="A filepath to replace the spreadsheets index file."
+)
+@click.option(
+    "-td",
+    type=str,
+    help="A filepath to replace the template definitions file.",
+)
+@click.option(
+    "-pd", type=str, help="A filepath to replace the piece definitions file."
+)
+@click.option(
+    "-vd",
+    type=str,
+    help="A filepath to replace the volunteer definitions file.",
+)
+@click.option(
+    "-s",
+    "summary_path",
+    type=str,
+    help="A filepath to replace the summary file.",
+)
+@click.option(
+    "-ek",
+    "--export-known-only",
+    is_flag=True,
+    default=False,
+    flag_value=True,
+    help=(
+        "Export only the volunteers and pieces that appear in the "
+        "definition files. Requires piece definitions file and "
+        "volunteer definitions file. Default is False."
+    ),
+)
+@click.option(
+    "--strict",
+    is_flag=True,
+    default=False,
+    flag_value=True,
+    help="Fail on warnings instead of only displaying them.",
+)
+def export_master(*args, **kwargs):
+    logger.warning("This command is deprecated. Use `export_summary` instead.")
+    ctx = click.get_current_context()
+    ctx.invoke(export_summary, *args, **kwargs)

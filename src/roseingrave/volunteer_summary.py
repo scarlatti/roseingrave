@@ -13,7 +13,11 @@ from ._input_files import (
     read_template,
     read_volunteer_definitions,
 )
-from ._output_files import read_spreadsheets_index, write_volunteer_data
+from ._output_files import (
+    SI_SUMMARY_KEY,
+    read_spreadsheets_index,
+    write_volunteer_data,
+)
 from ._piece import Piece
 from ._shared import error, fail_on_warning
 from ._sheets import gspread_auth, open_spreadsheet
@@ -157,8 +161,8 @@ def volunteer_summary(emails, si, td, pd, vd, vdp, export_known_only, strict):
     success, spreadsheets = read_spreadsheets_index(si, must_exist=True)
     if not success:
         return
-    # remove master spreadsheet
-    spreadsheets.pop("MASTER", None)
+    # remove summary spreadsheet
+    spreadsheets.pop(SI_SUMMARY_KEY, None)
 
     success, template = read_template(td, strict)
     if not success:

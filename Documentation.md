@@ -21,8 +21,8 @@ This is the documentation for the `roseingrave` package.
   - [`volunteer_summary`](#volunteer_summary)
   - [`piece_summary`](#piece_summary)
   - [`compile_pieces`](#compile_pieces)
-  - [`import_master`](#import_master)
-  - [`export_master`](#export_master)
+  - [`import_summary`](#import_summary)
+  - [`export_summary`](#export_summary)
 
 ## Settings (optional)
 
@@ -54,8 +54,8 @@ The `"template"` file defines the names of rows or columns and other values to
 use for created spreadsheets. The default values can be found
 [here](https://github.com/scarlatti/roseingrave/blob/main/src/roseingrave/defaults/template_definitions.json).
 
-The `"masterSpreadsheet"` and `"volunteerSpreadsheet"` values define information
-for the master and volunteer spreadsheets respectively:
+The `"summarySpreadsheet"` and `"volunteerSpreadsheet"` values define
+information for the summary and volunteer spreadsheets respectively:
 
 - `"folder"`: The id of the Google Drive folder to save the created
   spreadsheets. A value of `null` means the root folder.
@@ -112,7 +112,7 @@ Each field under `"commentFields"` has the following meaning:
   `"notes"` that lists all the supplemental sources, if any.
 - `"comments"`: The title of a single row below the bars section, where
   source-specific comments may be left.
-- `"summary"`: In the master spreadsheet, the title of a column for each source
+- `"summary"`: In the summary spreadsheet, the title of a column for each source
   for a summary of all the volunteer inputs.
 
 Each field under `"values"` has the following meaning:
@@ -202,8 +202,8 @@ the order of the pieces preserved.
 ### `"spreadsheetsIndex"`
 
 The `"spreadsheetsIndex"` file defines a mapping from volunteer emails to their
-corresponding spreadsheet link. It will also have a key of `"MASTER"` for the
-master spreadsheet.
+corresponding spreadsheet link. It will also have a key of `"SUMMARY"` for the
+summary spreadsheet.
 
 ### `"volunteerDataPath"`
 
@@ -220,10 +220,10 @@ including each volunteer-source pair that have matched this piece.
 ### `"summary"`
 
 The `"summary"` file consolidates all the information about pieces into one file
-for ease of importing to and exporting from the master spreadsheet. It has a
+for ease of importing to and exporting from the summary spreadsheet. It has a
 very similar format to `"pieceDataPath"` files, except that each source has an
 additional field `"summary"`, which is a summary column for each source in the
-master spreadsheet.
+summary spreadsheet.
 
 ## Commands
 
@@ -265,7 +265,7 @@ If there are unresolvable issues, displays warnings and does nothing.
   - `volunteers`: Combine repeated emails, keeping the union of all sources
     found, preserving order. Remove pieces not found in `"pieces"`. Remove
     volunteers with no pieces. Remove unknown fields.
-  - `spreadsheetsIndex`: Sort all keys, with `"MASTER"` (if exists) at the top.
+  - `spreadsheetsIndex`: Sort all keys, with `"SUMMARY"` (if exists) at the top.
     Remove spreadsheets that are not accessible through the user's account.
 
 #### Options
@@ -387,15 +387,18 @@ be skipped. Unknown or missing fields will raise warnings.
 - `-s`: A filepath to replace `"summary"`.
 - `--strict` (flag): Fail on warnings instead of only displaying them.
 
-### `import_master`
+### `import_summary`
 
-Update the master spreadsheet, or create it if it doesn't exist.
+Update the summary spreadsheet, or create it if it doesn't exist.
+
+_Note: There is a deprecated command `import_master` that does the same thing.
+It will be removed in v1.0.0._
 
 Note that this will wipe all current content in the existing spreadsheet. To
 keep the original spreadsheet, use the `-c` flag, remove the link from
 `"spreadsheetsIndex"`, or make a copy first.
 
-For most accurate sheet, run the `compile_pieces` or `export_master` command
+For most accurate sheet, run the `compile_pieces` or `export_summary` command
 first.
 
 Requires `"spreadsheetsIndex"`, `"template"`, and `"summary"`. If created,
@@ -403,16 +406,19 @@ outputs the spreadsheet link to `"spreadsheetsIndex"`.
 
 #### Options
 
-- `-c`/`--create`: Create a new master spreadsheet.
+- `-c`/`--create`: Create a new summary spreadsheet.
 - `-td`: A filepath to replace `"template"`.
 - `-pd`: A filepath to replace `"pieces"`.
 - `-s`: A filepath to replace `"summary"`.
 - `-si`: A filepath to replace `"spreadsheetsIndex"`.
 - `--strict` (flag): Fail on warnings instead of only displaying them.
 
-### `export_master`
+### `export_summary`
 
-Export the master spreadsheet.
+Export the summary spreadsheet.
+
+_Note: There is a deprecated command `export_master` that does the same thing.
+It will be removed in v1.0.0._
 
 Requires `"spreadsheetsIndex"` and `"template"`. If `--export-known-only` is
 given, requires `"pieces"` and `"volunteers"`. Outputs data to `"summary"`.

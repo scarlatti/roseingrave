@@ -322,7 +322,7 @@ class Piece:
             ]
         return values
 
-    def _create_supplemental_sources_column(self, values, is_master):
+    def _create_supplemental_sources_column(self, values, is_summary):
         """Create the supplemental sources column(s) if needed.
         Wraps to more columns if there are too many sources.
         Return True if created.
@@ -331,7 +331,7 @@ class Piece:
             return False
 
         num_cols = len(values[0])
-        start_row = 2 if is_master else 1
+        start_row = 2 if is_summary else 1
         # don't go into the comments row
         wrap_row = len(values) - 1
 
@@ -408,7 +408,7 @@ class Piece:
             )
 
         has_supplemental_col = self._create_supplemental_sources_column(
-            values, is_master=False
+            values, is_summary=False
         )
 
         # put the values
@@ -433,11 +433,11 @@ class Piece:
 
         return sheet
 
-    def create_master_sheet(self, spreadsheet, piece_data):
-        """Create a sheet for the master spreadsheet.
+    def create_summary_sheet(self, spreadsheet, piece_data):
+        """Create a sheet for the summary spreadsheet.
 
         Args:
-            spreadsheet (gspread.Spreadsheet): The master spreadsheet.
+            spreadsheet (gspread.Spreadsheet): The summary spreadsheet.
             piece_data (Dict): The data for the piece.
 
         Returns:
@@ -537,12 +537,12 @@ class Piece:
             values[row].append(note_str(bars[bar_num]))
 
         # force headers column to be 202 pixels minimum
-        resize = self._template["masterSpreadsheet"]["resize"]
+        resize = self._template["summarySpreadsheet"]["resize"]
         if resize:
             values[blank_row1 - 1] = ["placeholderplaceholderplaceh"]
 
         has_supplemental_col = self._create_supplemental_sources_column(
-            values, is_master=True
+            values, is_summary=True
         )
 
         # put the values
@@ -557,7 +557,7 @@ class Piece:
             blank_row2,
             comments_row,
             resize=resize,
-            is_master=True,
+            is_summary=True,
             source_cols=source_cols,
             has_supplemental_col=has_supplemental_col,
         )
@@ -596,7 +596,7 @@ class Piece:
                 bars_iter,
                 comments_row,
                 notes_col,
-            ) = _export_helper(sheet, template, is_master=False)
+            ) = _export_helper(sheet, template, is_summary=False)
         except Exception as e:  # pylint: disable=broad-except
             return _error(
                 'Error while exporting sheet "{}": {}', sheet.title, e
@@ -641,10 +641,10 @@ class Piece:
         }
 
     @staticmethod
-    def export_master_sheet(sheet, template):
-        """Export a sheet from the master spreadsheet.
+    def export_summary_sheet(sheet, template):
+        """Export a sheet from the summary spreadsheet.
         Assumes same format as a created sheet from
-        `Piece.create_master_sheet()`.
+        `Piece.create_summary_sheet()`.
         Assumes the last column for each source is the summary column.
 
         Args:
@@ -669,10 +669,10 @@ class Piece:
                 bars_iter,
                 comments_row,
                 notes_col,
-            ) = _export_helper(sheet, template, is_master=True)
+            ) = _export_helper(sheet, template, is_summary=True)
         except Exception as e:  # pylint: disable=broad-except
             return _error(
-                'Error while exporting master sheet "{}": {}', sheet.title, e
+                'Error while exporting summary sheet "{}": {}', sheet.title, e
             )
 
         sources = []
@@ -761,7 +761,7 @@ def _format_sheet(
     blank_row2,
     comments_row,
     resize=False,
-    is_master=False,
+    is_summary=False,
     source_cols=None,
     has_supplemental_col=False,
 ):
@@ -781,7 +781,7 @@ def _format_sheet(
 
     BLACK = hex_to_rgb("000000")
 
-    header_end = 2 if is_master else 1
+    header_end = 2 if is_summary else 1
 
     if source_cols is None:
         source_cols = []
@@ -884,7 +884,7 @@ def _format_sheet(
         # everything with user input, include the notes column
         (f"B2:{notes_col_str}", user_input_range_format),
     ]
-    if is_master:
+    if is_summary:
         # make all summary cells be centered
         center_align = {
             "cell": {
@@ -914,7 +914,7 @@ def _format_sheet(
     # borders
     range_borders = []
 
-    if is_master:
+    if is_summary:
         double_border = {
             "style": "DOUBLE",
             "color": BLACK,
@@ -993,7 +993,7 @@ def _format_sheet(
             # column 1: width 200
             ({"startIndex": 0, "endIndex": 1}, 200),
         )
-    if is_master or not resize:
+    if is_summary or not resize:
         column_widths.append(
             # source columns: width 150
             ({"startIndex": 1, "endIndex": notes_col - 1}, 150),
@@ -1025,7 +1025,7 @@ def _format_sheet(
         )
 
     if resize:
-        end_col = 1 if is_master else (notes_col - 1)
+        end_col = 1 if is_summary else (notes_col - 1)
         # auto-resize headers column and source columns
         requests.append(
             {
@@ -1145,8 +1145,8 @@ def _format_sheet(
             }
         )
 
-    # protect the first row and column of non-master sheets
-    if not is_master:
+    # protect the first row and column of non-summary sheets
+    if not is_summary:
         # get owner of spreadsheet
         owner = None
         for user in spreadsheet.list_permissions():
@@ -1189,7 +1189,7 @@ def _format_sheet(
 # ======================================================================
 
 
-def _export_helper(sheet, template, is_master):
+def _export_helper(sheet, template, is_summary):
     """Export a sheet and get important helper values."""
 
     values = sheet.get_values(value_render_option="formula")
@@ -1203,7 +1203,7 @@ def _export_helper(sheet, template, is_master):
 
     headers = tuple(template["metaDataFields"].keys())
 
-    start_row = 2 if is_master else 1
+    start_row = 2 if is_summary else 1
     headers_range = (start_row, start_row + len(headers))
     headers_iter = list(zip(range(*headers_range), headers))
 

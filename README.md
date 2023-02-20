@@ -111,17 +111,17 @@ Compile all the piece data into the summary file:
 $ roseingrave compile_pieces
 ```
 
-Create the master spreadsheets with the data from the summary file:
+Create the summary spreadsheets with the data from the summary file:
 
 ```bash
-$ roseingrave import_master
+$ roseingrave import_summary
 ```
 
-Fill out the summary columns as appropriate, then export the master spreadsheet
+Fill out the summary columns as appropriate, then export the summary spreadsheet
 into the summary file:
 
 ```bash
-$ roseingrave export_master
+$ roseingrave export_summary
 ```
 
 See the

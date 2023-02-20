@@ -39,6 +39,8 @@ __all__ = (
 
 # ======================================================================
 
+SI_SUMMARY_KEY = "SUMMARY"
+
 
 def read_spreadsheets_index(path=None, must_exist=False):
     """Read the spreadsheets index file.
@@ -74,6 +76,13 @@ def read_spreadsheets_index(path=None, must_exist=False):
     except ValueError as ex:
         error(ex)
         return ERROR_RETURN
+
+    # DEPRECATED: REMOVE IN v1.0.0
+    if "MASTER" in contents:
+        logger.warning('Deprecated key "MASTER": use "SUMMARY" instead')
+        # switch the value over, if it doesn't exist
+        contents.setdefault("SUMMARY", contents.pop("MASTER"))
+
     return True, contents
 
 
@@ -130,6 +139,12 @@ def fix_spreadsheets_index(path=None):
     except (FileNotFoundError, ValueError) as ex:
         return _error(ex)
 
+    # DEPRECATED: REMOVE IN v1.0.0
+    if "MASTER" in contents:
+        logger.warning('Deprecated key "MASTER": use "SUMMARY" instead')
+        # switch the value over, if it doesn't exist
+        contents.setdefault("SUMMARY", contents.pop("MASTER"))
+
     # check all links
     fixed = {}
     success, gc = gspread_auth()
@@ -138,8 +153,8 @@ def fix_spreadsheets_index(path=None):
     for email, link in contents.items():
         success, _ = open_spreadsheet(gc, link)
         if not success:
-            if email == "MASTER":
-                volunteer = "master spreadsheet"
+            if email == SI_SUMMARY_KEY:
+                volunteer = "summary spreadsheet"
             else:
                 volunteer = f'volunteer "{email}"'
             _error("Removing {}", volunteer)
@@ -147,8 +162,8 @@ def fix_spreadsheets_index(path=None):
         fixed[email] = link
 
     data = {}
-    if "MASTER" in fixed:
-        data["MASTER"] = fixed.pop("MASTER")
+    if SI_SUMMARY_KEY in fixed:
+        data[SI_SUMMARY_KEY] = fixed.pop(SI_SUMMARY_KEY)
     for email, link in sorted(fixed.items()):
         data[email] = link
 

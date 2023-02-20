@@ -1,7 +1,7 @@
 {
-  "masterSpreadsheet": {
+  "summarySpreadsheet": {
     "folder": null,
-    "title": "Master Spreadsheet",
+    "title": "Summary Spreadsheet",
     "publicAccess": null,
     "shareWith": [],
     "resize": true

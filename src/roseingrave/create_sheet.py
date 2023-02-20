@@ -13,7 +13,11 @@ from ._input_files import (
     read_template,
     read_volunteer_definitions,
 )
-from ._output_files import read_spreadsheets_index, write_spreadsheets_index
+from ._output_files import (
+    SI_SUMMARY_KEY,
+    read_spreadsheets_index,
+    write_spreadsheets_index,
+)
 from ._shared import fail_on_warning
 from ._sheets import (
     add_permissions,
@@ -373,10 +377,10 @@ def create_sheet(emails, extend, replace, new, td, pd, vd, si, strict):
         filtered = {}
         email_not_found = False
         for email in emails:
-            # don't allow this to update the master spreadsheet
+            # don't allow this to update the summary spreadsheet
             # this technically won't change the actual behavior, since
-            # there is no "MASTER" volunteer email
-            if email == "MASTER":
+            # there is no "SUMMARY" volunteer email
+            if email == SI_SUMMARY_KEY:
                 continue
             if email not in volunteers:
                 email_not_found = True

@@ -1,6 +1,6 @@
 """
-import_master.py
-Update the master spreadsheet.
+import_summary.py
+Update the summary spreadsheet.
 """
 
 # ======================================================================
@@ -8,39 +8,34 @@ Update the master spreadsheet.
 import click
 from loguru import logger
 
-from ._input_files import (
-    read_template,
-    read_piece_definitions,
-)
+from ._input_files import read_piece_definitions, read_template
 from ._output_files import (
-    read_summary,
+    SI_SUMMARY_KEY,
     read_spreadsheets_index,
+    read_summary,
     write_spreadsheets_index,
 )
 from ._sheets import (
-    gspread_auth,
-    create_spreadsheet,
-    open_spreadsheet,
-    add_temp_sheet,
     add_permissions,
+    add_temp_sheet,
+    create_spreadsheet,
+    gspread_auth,
+    open_spreadsheet,
 )
 
 # ======================================================================
 
-__all__ = ("import_master",)
-
-# ======================================================================
-
-MASTER_KEY = "MASTER"
+# DEPRECATED: REMOVE IN v1.0.0
+__all__ = ("import_summary", "import_master")
 
 # ======================================================================
 
 
 def _create_piece_sheets(spreadsheet, pieces, summary):
-    """Create the piece sheets in the master spreadsheet.
+    """Create the piece sheets in the summary spreadsheet.
 
     Args:
-        spreadsheet (gspread.Spreadsheet): The master spreadsheet.
+        spreadsheet (gspread.Spreadsheet): The summary spreadsheet.
         pieces (Dict[str, Piece]): A mapping from piece names to piece
             objects.
         summary (Dict[str, Dict]): The piece summary.
@@ -62,7 +57,7 @@ def _create_piece_sheets(spreadsheet, pieces, summary):
 
     for title in summary.keys():
         logger.debug('Creating sheet for piece "{}"', title)
-        pieces[title].create_master_sheet(spreadsheet, summary[title])
+        pieces[title].create_summary_sheet(spreadsheet, summary[title])
 
     # delete temp sheet
     spreadsheet.del_worksheet(temp_sheet)
@@ -73,14 +68,14 @@ def _create_piece_sheets(spreadsheet, pieces, summary):
 # ======================================================================
 
 
-@click.command("import_master", help="Update the master spreadsheet.")
+@click.command("import_summary", help="Update the summary spreadsheet.")
 @click.option(
     "-c",
     "--create",
     is_flag=True,
     default=False,
     flag_value=True,
-    help="Create a new master spreadsheet.",
+    help="Create a new summary spreadsheet.",
 )
 @click.option(
     "-td",
@@ -106,11 +101,11 @@ def _create_piece_sheets(spreadsheet, pieces, summary):
     flag_value=True,
     help="Fail on warnings instead of only displaying them.",
 )
-def import_master(create, td, pd, summary_path, si, strict):
-    """Update the master spreadsheet.
+def import_summary(create, td, pd, summary_path, si, strict):
+    """Update the summary spreadsheet.
 
     Args:
-        create (str): Whether to create a new master spreadsheet.
+        create (str): Whether to create a new summary spreadsheet.
             Default is False.
         td (str): A filepath to replace the template definitions file.
         pd (str): A filepath to replace the piece definitions file.
@@ -123,7 +118,7 @@ def import_master(create, td, pd, summary_path, si, strict):
 
     logger.warning(
         "For most accurate summary, run the `compile_pieces` or "
-        "`export_master` command first."
+        "`export_summary` command first."
     )
 
     success, gc = gspread_auth()
@@ -149,16 +144,16 @@ def import_master(create, td, pd, summary_path, si, strict):
         return
 
     # check if need to create spreadsheet
-    if MASTER_KEY not in spreadsheets:
+    if SI_SUMMARY_KEY not in spreadsheets:
         logger.debug(
-            "Master spreadsheet link not found in spreadsheets index "
+            "Summary spreadsheet link not found in spreadsheets index "
             "file: creating new"
         )
         create = True
 
     # create or open spreadsheet
     if create:
-        ss_settings = template["masterSpreadsheet"]
+        ss_settings = template["summarySpreadsheet"]
 
         success, spreadsheet = create_spreadsheet(
             gc, ss_settings["title"], ss_settings["folder"]
@@ -175,9 +170,9 @@ def import_master(create, td, pd, summary_path, si, strict):
             return
 
         # save link
-        spreadsheets[MASTER_KEY] = spreadsheet.url
+        spreadsheets[SI_SUMMARY_KEY] = spreadsheet.url
     else:
-        link = spreadsheets[MASTER_KEY]
+        link = spreadsheets[SI_SUMMARY_KEY]
         success, spreadsheet = open_spreadsheet(gc, link)
         if not success:
             return
@@ -195,3 +190,46 @@ def import_master(create, td, pd, summary_path, si, strict):
             return
 
     logger.info("Done")
+
+
+# DEPRECATED: REMOVE IN v1.0.0
+# For backward compatibility, the command with the deprecated name
+@click.command(
+    "import_master", help="DEPRECATED: Use `import_summary` instead."
+)
+@click.option(
+    "-c",
+    "--create",
+    is_flag=True,
+    default=False,
+    flag_value=True,
+    help="Create a new summary spreadsheet.",
+)
+@click.option(
+    "-td",
+    type=str,
+    help="A filepath to replace the template definitions file.",
+)
+@click.option(
+    "-pd", type=str, help="A filepath to replace the piece definitions file."
+)
+@click.option(
+    "-s",
+    "summary_path",
+    type=str,
+    help="A filepath to replace the summary file.",
+)
+@click.option(
+    "-si", type=str, help="A filepath to replace the spreadsheets index file."
+)
+@click.option(
+    "--strict",
+    is_flag=True,
+    default=False,
+    flag_value=True,
+    help="Fail on warnings instead of only displaying them.",
+)
+def import_master(*args, **kwargs):
+    logger.warning("This command is deprecated. Use `import_summary` instead.")
+    ctx = click.get_current_context()
+    ctx.invoke(import_summary, *args, **kwargs)
