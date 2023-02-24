@@ -1,5 +1,11 @@
 # Version History
 
+## v0.12.1 (unreleased)
+
+- Fixed bug of using the only sheet as a temp sheet without renaming it (leading
+  to possible title conflicts when adding new piece sheets)
+  (https://github.com/scarlatti/roseingrave/issues/20)
+
 ## v0.12.0 (2023-02-20)
 
 - Deprecated any mention of the "master" spreadsheet

@@ -23,6 +23,7 @@ from ._sheets import (
     add_permissions,
     add_temp_sheet,
     create_spreadsheet,
+    get_valid_worksheet_title,
     gspread_auth,
     open_spreadsheet,
     share_spreadsheet,
@@ -188,12 +189,11 @@ def populate_spreadsheets(gc, volunteer_spreadsheets, pieces, strict):
         }
         temp_sheet = None
 
-        sheet_names_set = set(existing_sheets.keys())
         piece_names_set = set(volunteer.pieces)
         if volunteer_spreadsheet.extend_spreadsheet:
             # extend the sheet: only create the missing pieces
             # check for extra sheets that don't match the piece names
-            extra_sheets = sheet_names_set - piece_names_set
+            extra_sheets = set(existing_sheets.keys()) - piece_names_set
             if len(extra_sheets) > 0:
                 logger.warning(
                     "Found extra piece sheets: {}",
@@ -207,11 +207,16 @@ def populate_spreadsheets(gc, volunteer_spreadsheets, pieces, strict):
             if len(existing_sheets) == 1:
                 # no need to add temp sheet: use the only sheet
                 _, temp_sheet = existing_sheets.popitem()
+                # set the title of the temp sheet to something else, so
+                # it doesn't conflict with the pieces being added
+                temp_title = get_valid_worksheet_title(
+                    spreadsheet, invalid=piece_names_set
+                )
+                temp_sheet.update_title(temp_title)
             else:
                 # add a temp sheet
-                invalid_names = piece_names_set | sheet_names_set
                 success, temp_sheet = add_temp_sheet(
-                    spreadsheet, invalid_names
+                    spreadsheet, invalid=piece_names_set
                 )
                 if not success:
                     if strict:

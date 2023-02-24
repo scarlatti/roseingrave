@@ -22,6 +22,7 @@ __all__ = (
     "gspread_auth",
     "create_spreadsheet",
     "open_spreadsheet",
+    "get_valid_worksheet_title",
     "add_temp_sheet",
     "share_spreadsheet",
     "share_public",
@@ -208,6 +209,40 @@ def open_spreadsheet(gc, link):
 # ======================================================================
 
 
+def get_valid_worksheet_title(
+    spreadsheet, title="_temp", fmt="{title}{num}", invalid=None
+):
+    """Returns a non-conflicting worksheet title.
+
+    Args:
+        spreadsheet (gspread.Spreadsheet): The spreadsheet.
+        title (str): A title, to which a number will be appended until
+            a valid worksheet title is found.
+        fmt (str): A template format for how the number is appended to
+            the title. Requires `"{title}"` and `"{num}"` to be included
+            in the string.
+            Default is `"{title}{num}"`.
+        invalid (Set[str]): A set of invalid names.
+            Default is None.
+
+    Returns:
+        str: A worksheet name.
+    """
+    if not ("{title}" in fmt and "{num}" in fmt):
+        raise ValueError(
+            '`fmt` is invalid: requires both "{title}" and "{num}"'
+        )
+    invalid_titles = set(invalid or set()) | set(
+        worksheet.title for worksheet in spreadsheet.worksheets()
+    )
+    ws_title = title
+    count = 1
+    while ws_title in invalid_titles:
+        ws_title = fmt.format(title=title, num=count)
+        count += 1
+    return ws_title
+
+
 def add_temp_sheet(spreadsheet, invalid=None):
     """Add a temp sheet to a spreadsheet.
 
@@ -233,14 +268,7 @@ def add_temp_sheet(spreadsheet, invalid=None):
         },
     }
 
-    if invalid is None:
-        invalid = set()
-
-    title = "_temp"
-    count = 0
-    while title in invalid:
-        count += 1
-        title = f"_temp{count}"
+    title = get_valid_worksheet_title(spreadsheet, invalid=invalid)
 
     try:
         return True, spreadsheet.add_worksheet(title, 1, 1)
