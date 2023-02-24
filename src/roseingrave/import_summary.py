@@ -45,10 +45,10 @@ def _create_piece_sheets(spreadsheet, pieces, summary):
     """
 
     # delete existing sheets
+    existing_sheets = list(spreadsheet.worksheets())
     success, temp_sheet = add_temp_sheet(spreadsheet, invalid=summary.keys())
     if not success:
         return False
-    existing_sheets = list(spreadsheet.worksheets())
     for sheet in existing_sheets:
         spreadsheet.del_worksheet(sheet)
 
