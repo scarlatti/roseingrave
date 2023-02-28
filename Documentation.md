@@ -391,9 +391,6 @@ be skipped. Unknown or missing fields will raise warnings.
 
 Update the summary spreadsheet, or create it if it doesn't exist.
 
-_Note: There is a deprecated command `import_master` that does the same thing.
-It will be removed in v1.0.0._
-
 Note that this will wipe all current content in the existing spreadsheet. To
 keep the original spreadsheet, use the `-c` flag, remove the link from
 `"spreadsheetsIndex"`, or make a copy first.
@@ -416,9 +413,6 @@ outputs the spreadsheet link to `"spreadsheetsIndex"`.
 ### `export_summary`
 
 Export the summary spreadsheet.
-
-_Note: There is a deprecated command `export_master` that does the same thing.
-It will be removed in v1.0.0._
 
 Requires `"spreadsheetsIndex"` and `"template"`. If `--export-known-only` is
 given, requires `"pieces"` and `"volunteers"`. Outputs data to `"summary"`.

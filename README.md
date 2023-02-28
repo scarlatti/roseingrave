@@ -111,7 +111,7 @@ Compile all the piece data into the summary file:
 $ roseingrave compile_pieces
 ```
 
-Create the summary spreadsheets with the data from the summary file:
+Create the summary spreadsheet with the data from the summary file:
 
 ```bash
 $ roseingrave import_summary

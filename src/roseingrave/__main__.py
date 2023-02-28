@@ -9,9 +9,9 @@ import click
 
 from .compile_pieces import compile_pieces
 from .create_sheet import create_sheet
-from .export_summary import export_master, export_summary
+from .export_summary import export_summary
 from .fix_input import fix_input
-from .import_summary import import_master, import_summary
+from .import_summary import import_summary
 from .piece_summary import piece_summary
 from .reauth import reauth
 from .volunteer_summary import volunteer_summary
@@ -42,9 +42,7 @@ cli = OrderedGroup(
         piece_summary,
         compile_pieces,
         import_summary,
-        import_master,  # DEPRECATED: REMOVE IN v1.0.0
         export_summary,
-        export_master,  # DEPRECATED: REMOVE IN v1.0.0
     ],
     help="Massively scalable musical source comparator",
 )

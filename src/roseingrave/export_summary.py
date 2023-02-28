@@ -24,8 +24,7 @@ from ._sheets import gspread_auth, open_spreadsheet
 
 # ======================================================================
 
-# DEPRECATED: REMOVE IN v1.0.0
-__all__ = ("export_summary", "export_master")
+__all__ = ("export_summary",)
 
 # ======================================================================
 
@@ -195,55 +194,3 @@ def export_summary(si, td, pd, vd, summary_path, export_known_only, strict):
             return
 
     logger.info("Done")
-
-
-# DEPRECATED: REMOVE IN v1.0.0
-# For backward compatibility, the command with the deprecated name
-@click.command(
-    "export_master", help="DEPRECATED: Use `export_summary` instead."
-)
-@click.option(
-    "-si", type=str, help="A filepath to replace the spreadsheets index file."
-)
-@click.option(
-    "-td",
-    type=str,
-    help="A filepath to replace the template definitions file.",
-)
-@click.option(
-    "-pd", type=str, help="A filepath to replace the piece definitions file."
-)
-@click.option(
-    "-vd",
-    type=str,
-    help="A filepath to replace the volunteer definitions file.",
-)
-@click.option(
-    "-s",
-    "summary_path",
-    type=str,
-    help="A filepath to replace the summary file.",
-)
-@click.option(
-    "-ek",
-    "--export-known-only",
-    is_flag=True,
-    default=False,
-    flag_value=True,
-    help=(
-        "Export only the volunteers and pieces that appear in the "
-        "definition files. Requires piece definitions file and "
-        "volunteer definitions file. Default is False."
-    ),
-)
-@click.option(
-    "--strict",
-    is_flag=True,
-    default=False,
-    flag_value=True,
-    help="Fail on warnings instead of only displaying them.",
-)
-def export_master(*args, **kwargs):
-    logger.warning("This command is deprecated. Use `export_summary` instead.")
-    ctx = click.get_current_context()
-    ctx.invoke(export_summary, *args, **kwargs)

@@ -1,5 +1,10 @@
 # Version History
 
+## v1.0.0 (unreleased)
+
+- Removed any mention of the "master" spreadsheet or "master" commands
+  (https://github.com/scarlatti/roseingrave/issues/17)
+
 ## v0.12.1 (2023-02-28)
 
 - Fixed bug of using the only sheet as a temp sheet without renaming it (leading

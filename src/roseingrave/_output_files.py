@@ -76,13 +76,6 @@ def read_spreadsheets_index(path=None, must_exist=False):
     except ValueError as ex:
         error(ex)
         return ERROR_RETURN
-
-    # DEPRECATED: REMOVE IN v1.0.0
-    if "MASTER" in contents:
-        logger.warning('Deprecated key "MASTER": use "SUMMARY" instead')
-        # switch the value over, if it doesn't exist
-        contents.setdefault("SUMMARY", contents.pop("MASTER"))
-
     return True, contents
 
 
@@ -138,12 +131,6 @@ def fix_spreadsheets_index(path=None):
         contents = read_json("spreadsheetsIndex", path)
     except (FileNotFoundError, ValueError) as ex:
         return _error(ex)
-
-    # DEPRECATED: REMOVE IN v1.0.0
-    if "MASTER" in contents:
-        logger.warning('Deprecated key "MASTER": use "SUMMARY" instead')
-        # switch the value over, if it doesn't exist
-        contents.setdefault("SUMMARY", contents.pop("MASTER"))
 
     # check all links
     fixed = {}

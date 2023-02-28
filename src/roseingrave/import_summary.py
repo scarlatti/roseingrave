@@ -25,8 +25,7 @@ from ._sheets import (
 
 # ======================================================================
 
-# DEPRECATED: REMOVE IN v1.0.0
-__all__ = ("import_summary", "import_master")
+__all__ = ("import_summary",)
 
 # ======================================================================
 
@@ -187,46 +186,3 @@ def import_summary(create, td, pd, summary_path, si, strict):
             return
 
     logger.info("Done")
-
-
-# DEPRECATED: REMOVE IN v1.0.0
-# For backward compatibility, the command with the deprecated name
-@click.command(
-    "import_master", help="DEPRECATED: Use `import_summary` instead."
-)
-@click.option(
-    "-c",
-    "--create",
-    is_flag=True,
-    default=False,
-    flag_value=True,
-    help="Create a new summary spreadsheet.",
-)
-@click.option(
-    "-td",
-    type=str,
-    help="A filepath to replace the template definitions file.",
-)
-@click.option(
-    "-pd", type=str, help="A filepath to replace the piece definitions file."
-)
-@click.option(
-    "-s",
-    "summary_path",
-    type=str,
-    help="A filepath to replace the summary file.",
-)
-@click.option(
-    "-si", type=str, help="A filepath to replace the spreadsheets index file."
-)
-@click.option(
-    "--strict",
-    is_flag=True,
-    default=False,
-    flag_value=True,
-    help="Fail on warnings instead of only displaying them.",
-)
-def import_master(*args, **kwargs):
-    logger.warning("This command is deprecated. Use `import_summary` instead.")
-    ctx = click.get_current_context()
-    ctx.invoke(import_summary, *args, **kwargs)

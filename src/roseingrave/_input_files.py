@@ -73,22 +73,6 @@ def read_template(path=None, strict=False):
     for level, level_values in raw_values.items():
         if level == "validation":
             continue
-        # DEPRECATED: REMOVE IN v1.0.0
-        if level == "masterSpreadsheet":
-            # for backward compatibility, do not fail on warning
-            logger.warning(
-                'Deprecated key "masterSpreadsheet": '
-                'use "summarySpreadsheet" instead'
-            )
-            if "summarySpreadsheet" in raw_values:
-                # they have an extra key, so just skip this value
-                logger.warning(
-                    'Using values of "summarySpreadsheet" key: ',
-                    'values of "masterSpreadsheet" will be ignored',
-                )
-                continue
-            # rename the key so that callers will have the right key
-            level = "summarySpreadsheet"
         if level not in values:
             warning = True
             logger.warning('unknown key "{}"', level)
