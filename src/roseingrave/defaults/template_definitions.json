@@ -15,30 +15,7 @@
     "resize": true
   },
   "metaDataFields": {
-    "title": "Title",
-    "tempo": "Tempo",
-    "isPianoClefs": "Clefs G2 and F4?",
-    "clefs": "Clefs other than not G2 and F4",
-    "keySig": "Key signature",
-    "timeSig": "Time signature",
-    "notBipartite": "Sonata not bipartite",
-    "barCount": "Number of bars (1st half + 2nd half)",
-    "compassHigh": "Highest note",
-    "compassLow": "Lowest note",
-    "hand": "Hand signs",
-    "endSignsA": "Endings signs (1st half)",
-    "endSignsB": "Endings signs (2nd half)",
-    "repeatSigns": "Repeat signs other than endings",
-    "articulation": "Articulation signs",
-    "dynamic": "Dynamic signs",
-    "ornamentTrill": "Ornamentation: trills /\\/\\?",
-    "ornamentPlus": "Ornamentation: + signs?",
-    "ornamentTr": "Ornamentation: Tr.?",
-    "ornamentAcciaccatura": "Acciaccaturas? (barred/slashed grace note)",
-    "ornamentAppoggiatura": "Appoggiaturas? (grace note)",
-    "ornamentTremulo": "Trem. or Tremulo?",
-    "ornamentOthers": "Other ornamentations",
-    "otherIndications": "Other indications"
+    "//": "You must provide this yourself"
   },
   "validation": {},
   "commentFields": {

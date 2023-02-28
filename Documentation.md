@@ -48,11 +48,12 @@ In the following, file names/paths will be referenced by its corresponding key.
 
 ## Input files
 
-### `"template"` (optional)
+### `"template"`
 
 The `"template"` file defines the names of rows or columns and other values to
 use for created spreadsheets. The default values can be found
 [here](https://github.com/scarlatti/roseingrave/blob/main/src/roseingrave/defaults/template_definitions.json).
+Only `"metaDataFields"` is required in the file.
 
 The `"summarySpreadsheet"` and `"volunteerSpreadsheet"` values define
 information for the summary and volunteer spreadsheets respectively:
@@ -79,7 +80,8 @@ For `"volunteerSpreadsheet"` specifically:
   volunteer's email.
 
 Each field under `"metaDataFields"` defines the name of each header, which go in
-the rows above the bars section.
+the rows above the bars section. The keys are for your own use, and the values
+are what will be shown in the sheets. At least one field must be given.
 
 Each field under `"validation"` defines specific values that any of the header
 fields can take. In particular, a value may be a dropdown with a predefined list
@@ -100,9 +102,9 @@ of choices or it may be a checkbox. You must use the corresponding key in
 }
 ```
 
-Also see
-[`validation_example.json`](https://github.com/scarlatti/roseingrave/blob/main/examples/validation_example.json)
-for a larger example.
+See
+[`metadata_validation_example.json`](https://github.com/scarlatti/roseingrave/blob/main/examples/metadata_validation_example.json)
+for an example of `"metaDataFields"` and a corresponding `"validation"` section.
 
 Each field under `"commentFields"` has the following meaning:
 
@@ -122,8 +124,8 @@ Each field under `"values"` has the following meaning:
 - `"commentsRowHeight"`: The number of pixels to make the height of the comments
   row. Must be at least 21 (the default height of a row).
 
-In the future, there will be additional fields for customizing font, font size,
-font weight, etc.
+In the future, there could be additional fields for customizing font, font size,
+font weight, etc. Please file an issue if you would like to see these features.
 
 ### `"pieces"`
 

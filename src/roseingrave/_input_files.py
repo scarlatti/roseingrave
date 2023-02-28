@@ -71,7 +71,7 @@ def read_template(path=None, strict=False):
 
     # get values from file
     for level, level_values in raw_values.items():
-        if level == "validation":
+        if level in ("metaDataFields", "validation"):
             continue
         if level not in values:
             warning = True
@@ -84,6 +84,12 @@ def read_template(path=None, strict=False):
                 logger.warning('unknown key "{}"."{}"', level, k)
                 continue
             level_defaults[k] = value
+    # metadata fields
+    if "metaDataFields" not in raw_values:
+        return _error('missing key "metaDataFields"')
+    values["metaDataFields"] = raw_values["metaDataFields"]
+    if len(values["metaDataFields"]) == 0:
+        return _error('"metaDataFields": must have at least one field')
     # validation
     values["validation"] = {}
     for k, validation in raw_values.get("validation", {}).items():

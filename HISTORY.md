@@ -4,6 +4,10 @@
 
 - Removed any mention of the "master" spreadsheet or "master" commands
   (https://github.com/scarlatti/roseingrave/issues/17)
+- Removed hard-coded `"metaDataFields"` values from defaults file
+  (https://github.com/scarlatti/roseingrave/issues/21)
+  - This forces the `"template"` file to be required for the user, which is a
+    non-backward compatible change.
 
 ## v0.12.1 (2023-02-28)
 
