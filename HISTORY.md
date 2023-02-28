@@ -5,6 +5,8 @@
 - Fixed bug of using the only sheet as a temp sheet without renaming it (leading
   to possible title conflicts when adding new piece sheets)
   (https://github.com/scarlatti/roseingrave/issues/20)
+- Fixed bug of plain text formatting not allowing checkboxes to render
+  (https://github.com/scarlatti/roseingrave/issues/22)
 
 ## v0.12.0 (2023-02-20)
 

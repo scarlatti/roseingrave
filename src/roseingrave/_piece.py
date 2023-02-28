@@ -808,6 +808,7 @@ def _format_sheet(
     )
 
     # formatting
+    # removing automatic number formatting happens with validations
     bolded = {
         "cell": {
             "userEnteredFormat": {
@@ -852,21 +853,13 @@ def _format_sheet(
             )
         ),
     }
-    user_input_range_format = {
+    wrapped = {
         "cell": {
             "userEnteredFormat": {
-                # no automatic number formatting
-                "numberFormat": {"type": "TEXT"},
-                # wrap all the text
                 "wrapStrategy": "WRAP",
             },
         },
-        "fields": ",".join(
-            (
-                "userEnteredFormat.numberFormat",
-                "userEnteredFormat.wrapStrategy",
-            )
-        ),
+        "fields": "userEnteredFormat.wrapStrategy",
     }
     source_end_column = _col_str(notes_col - 1)
     notes_col_str = _col_str(notes_col)
@@ -881,8 +874,8 @@ def _format_sheet(
         (f"A{comments_row}", middle_bolded),
         # comments row
         (f"B{comments_row}:{comments_row}", wrapped_top_align),
-        # everything with user input, include the notes column
-        (f"B2:{notes_col_str}", user_input_range_format),
+        # everything with user input, including the notes column
+        (f"B2:{notes_col_str}", wrapped),
     ]
     if is_summary:
         # make all summary cells be centered
@@ -1111,11 +1104,14 @@ def _format_sheet(
         header: header_end + i
         for i, header in enumerate(template["metaDataFields"].keys())
     }
+    # by default, remove auto format for all user input cells
+    remove_auto_number_format = set(range(header_end, comments_row + 1))
     for key, validation in template["validation"].items():
         row = header_rows[key]
         v_type = validation["type"]
         if v_type == "checkbox":
             condition = {"type": "BOOLEAN"}
+            remove_auto_number_format.remove(row)
         elif v_type == "dropdown":
             condition = {
                 "type": "ONE_OF_LIST",
@@ -1144,6 +1140,49 @@ def _format_sheet(
                 }
             }
         )
+
+    # remove automatic number formatting for all rows without a checkbox
+    # for how formatting messes with checkboxes, see issue #22
+    def no_auto_number_format(start_row, end_row):
+        requests.append(
+            {
+                "repeatCell": {
+                    "range": {
+                        "sheetId": sheet_id,
+                        "startRowIndex": start_row,
+                        "endRowIndex": end_row + 1,
+                        "startColumnIndex": 1,
+                        # include the notes column
+                        "endColumnIndex": notes_col,
+                    },
+                    "cell": {
+                        "userEnteredFormat": {
+                            # no automatic number formatting
+                            "numberFormat": {"type": "TEXT"},
+                        }
+                    },
+                    "fields": "userEnteredFormat.numberFormat",
+                }
+            }
+        )
+
+    # combine rows to minimize number of requests
+    start_row = None
+    last_row = None
+    for row in sorted(remove_auto_number_format):
+        if start_row is None:
+            start_row = row
+            last_row = row
+            continue
+        if last_row + 1 == row:
+            # still in the same range
+            last_row = row
+            continue
+        no_auto_number_format(start_row, last_row)
+        start_row = row
+        last_row = row
+    if start_row is not None:
+        no_auto_number_format(start_row, last_row)
 
     # protect the first row and column of non-summary sheets
     if not is_summary:
