@@ -1,6 +1,6 @@
 # Version History
 
-## v0.12.1 (unreleased)
+## v0.12.1 (2023-02-28)
 
 - Fixed bug of using the only sheet as a temp sheet without renaming it (leading
   to possible title conflicts when adding new piece sheets)
