@@ -1,6 +1,6 @@
 # Version History
 
-## v1.0.0 (unreleased)
+## v1.0.0 (2023-03-03)
 
 - Removed any mention of the "master" spreadsheet or "master" commands
   (https://github.com/scarlatti/roseingrave/issues/17)
