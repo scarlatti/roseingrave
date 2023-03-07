@@ -987,9 +987,10 @@ def _format_sheet(
             ({"startIndex": 0, "endIndex": 1}, 200),
         )
     if is_summary or not resize:
+        sources_width = template["values"]["sourcesColumnWidth"]
         column_widths.append(
-            # source columns: width 150
-            ({"startIndex": 1, "endIndex": notes_col - 1}, 150),
+            # source columns
+            ({"startIndex": 1, "endIndex": notes_col - 1}, sources_width),
         )
     column_widths.append(
         # notes col: width 300

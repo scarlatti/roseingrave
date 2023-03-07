@@ -6,7 +6,7 @@ This is the documentation for the `roseingrave` package.
 
 - [Settings](#settings-optional)
 - [Input files](#input-files)
-  - [`"template"`](#template-optional)
+  - [`"template"`](#template)
   - [`"pieces"`](#pieces)
   - [`"volunteers"`](#volunteers)
 - [Output files](#output-files)
@@ -123,6 +123,8 @@ Each field under `"values"` has the following meaning:
   Must be positive.
 - `"commentsRowHeight"`: The number of pixels to make the height of the comments
   row. Must be at least 21 (the default height of a row).
+- `"sourcesColumnWidth"`: If `resize` is False, the number of pixels to make the
+  width of the sources columns. Must be at least 100.
 
 In the future, there could be additional fields for customizing font, font size,
 font weight, etc. Please file an issue if you would like to see these features.

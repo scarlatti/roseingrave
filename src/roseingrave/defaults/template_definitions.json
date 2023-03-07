@@ -26,6 +26,7 @@
   },
   "values": {
     "defaultBarCount": 100,
-    "commentsRowHeight": 75
+    "commentsRowHeight": 75,
+    "sourcesColumnWidth": 150
   }
 }

@@ -159,6 +159,10 @@ def read_template(path=None, strict=False):
     if values["values"]["commentsRowHeight"] < 21:
         invalid = True
         _error('"values"."commentsRowHeight": must be at least 21')
+    # sources column width must be at least 100
+    if values["values"]["sourcesColumnWidth"] < 100:
+        invalid = True
+        _error('"values"."sourcesColumnWidth": must be at least 100')
 
     if invalid:
         return ERROR_RETURN

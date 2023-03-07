@@ -1,5 +1,9 @@
 # Version History
 
+## v1.0.1 (unreleased)
+
+- Added `"values"."sourcesColumnWidth"` field to template file
+
 ## v1.0.0 (2023-03-03)
 
 - Removed any mention of the "master" spreadsheet or "master" commands
