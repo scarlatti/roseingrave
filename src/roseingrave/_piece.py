@@ -983,8 +983,8 @@ def _format_sheet(
     column_widths = []
     if not resize:
         column_widths.append(
-            # column 1: width 200
-            ({"startIndex": 0, "endIndex": 1}, 200),
+            # column 1: width 285
+            ({"startIndex": 0, "endIndex": 1}, 285),
         )
     if is_summary or not resize:
         sources_width = template["values"]["sourcesColumnWidth"]
