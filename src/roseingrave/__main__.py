@@ -7,6 +7,7 @@ The command-line interface for Roseingrave.
 
 import click
 
+from .__version__ import __version__
 from .compile_pieces import compile_pieces
 from .create_sheet import create_sheet
 from .export_summary import export_summary
@@ -46,6 +47,11 @@ cli = OrderedGroup(
     ],
     help="Massively scalable musical source comparator",
 )
+cli = click.version_option(
+    version=__version__,
+    package_name="roseingrave",
+    message="%(prog)s, version %(version)s",
+)(cli)
 
 if __name__ == "__main__":
     cli()

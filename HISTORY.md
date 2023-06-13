@@ -5,6 +5,7 @@
 - Added `"values"."sourcesColumnWidth"` field to template file
 - Increased default width of column 1 to 285
 - Added all editors of spreadsheet (except volunteer) to protected range
+- Added `--version` option
 
 ## v1.0.0 (2023-03-03)
 
