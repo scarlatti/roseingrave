@@ -238,7 +238,9 @@ def populate_spreadsheets(gc, volunteer_spreadsheets, pieces, strict):
                 continue
             if piece_name not in sheets:
                 logger.debug('Creating sheet for piece "{}"', piece_name)
-                sheet = pieces[piece_name].create_sheet(spreadsheet)
+                sheet = pieces[piece_name].create_sheet(
+                    spreadsheet, volunteer.email
+                )
                 sheets[piece_name] = sheet
             else:
                 # copy from previously created

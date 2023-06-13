@@ -353,11 +353,12 @@ class Piece:
 
         return True
 
-    def create_sheet(self, spreadsheet):
+    def create_sheet(self, spreadsheet, volunteer_email):
         """Create a sheet for this piece.
 
         Args:
             spreadsheet (gspread.Spreadsheet): The parent spreadsheet.
+            volunteer_email (str): The volunteer's email.
 
         Returns:
             gspread.Worksheet: The created sheet.
@@ -422,6 +423,7 @@ class Piece:
             blank_row1,
             blank_row2,
             comments_row,
+            volunteer_email=volunteer_email,
             resize=resize,
             has_supplemental_col=has_supplemental_col,
         )
@@ -557,7 +559,6 @@ class Piece:
             blank_row2,
             comments_row,
             resize=resize,
-            is_summary=True,
             source_cols=source_cols,
             has_supplemental_col=has_supplemental_col,
         )
@@ -760,14 +761,15 @@ def _format_sheet(
     blank_row1,
     blank_row2,
     comments_row,
+    volunteer_email=None,
     resize=False,
-    is_summary=False,
     source_cols=None,
     has_supplemental_col=False,
 ):
     """Format a piece sheet."""
 
     sheet_id = sheet.id
+    is_summary = volunteer_email is None
 
     def hex_to_rgb(hex_color):
         """Changes a hex color code (no pound) to an RGB color dict.
@@ -1187,16 +1189,20 @@ def _format_sheet(
 
     # protect the first row and column of non-summary sheets
     if not is_summary:
-        # get owner of spreadsheet
-        owner = None
+        # find all editors except for volunteer
+        editors = []
         for user in spreadsheet.list_permissions():
-            if user["role"] == "owner":
-                owner = user["emailAddress"]
-                break
-        if owner is None:
+            if user["role"] not in ("owner", "writer"):
+                continue
+            email = user["emailAddress"]
+            if email == volunteer_email:
+                continue
+            editors.append(email)
+        if len(editors) == 0:
             # likely will never happen
             logger.error(
-                'Could not find owner of spreadsheet "{}"', spreadsheet.title
+                'No editors found for protected range of spreadsheet "{}"',
+                spreadsheet.title,
             )
         else:
             requests.append(
@@ -1215,7 +1221,7 @@ def _format_sheet(
                                     "startColumnIndex": 1,
                                 },
                             ],
-                            "editors": {"users": [owner]},
+                            "editors": {"users": editors},
                         }
                     }
                 }
