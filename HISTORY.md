@@ -1,6 +1,6 @@
 # Version History
 
-## v1.1.0 (unreleased)
+## v1.1.0 (2023-06-13)
 
 - Added `"values"."sourcesColumnWidth"` field to template file
 - Increased default width of column 1 to 285
