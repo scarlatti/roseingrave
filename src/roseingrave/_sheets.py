@@ -166,6 +166,7 @@ def open_spreadsheet(gc, link):
         Tuple[bool, gspread.Spreadsheet]:
             Whether the open was successful, and the spreadsheet.
     """
+    ERROR_RETURN = False, None
 
     # code -> status -> message
     ERRORS = {
@@ -189,7 +190,7 @@ def open_spreadsheet(gc, link):
         return True, gc.open_by_url(link)
     except gspread.exceptions.NoValidUrlKeyFound:
         error(f'Invalid spreadsheet link: "{link}"')
-        return False, None
+        return ERROR_RETURN
     except gspread.exceptions.APIError as ex:
         args = ex.args[0]
 
@@ -198,7 +199,7 @@ def open_spreadsheet(gc, link):
 
         try:
             logger.warning(ERRORS[code][status])
-            return False, None
+            return ERROR_RETURN
         except KeyError:
             pass
 
@@ -255,6 +256,7 @@ def add_temp_sheet(spreadsheet, invalid=None):
         Tuple[bool, gspread.Worksheet]:
             Whether the addition was successful, and the temp sheet.
     """
+    ERROR_RETURN = False, None
 
     # code -> status -> message
     ERRORS = {
@@ -280,7 +282,7 @@ def add_temp_sheet(spreadsheet, invalid=None):
 
         try:
             logger.warning(ERRORS[code][status])
-            return False, None
+            return ERROR_RETURN
         except KeyError:
             pass
 

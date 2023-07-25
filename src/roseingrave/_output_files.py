@@ -123,7 +123,7 @@ def fix_spreadsheets_index(path=None):
 
     success = read_settings()
     if not success:
-        return False
+        return ERROR_RETURN
 
     logger.info("Fixing spreadsheets index file")
 
@@ -723,13 +723,14 @@ def write_piece_data(data, fmt_path=None):
     Returns:
         bool: Whether the write was successful.
     """
+    ERROR_RETURN = False
 
     def _error(msg):
-        return error(msg, False)
+        return error(msg, ERROR_RETURN)
 
     success = read_settings()
     if not success:
-        return False
+        return ERROR_RETURN
 
     # validate args
     try:
@@ -784,7 +785,7 @@ def read_summary(pieces, path=None, strict=False):
 
     try:
         values = read_json(key, path)
-    except FileNotFoundError as ex:
+    except (FileNotFoundError, ValueError) as ex:
         return _error(ex)
 
     # validate data

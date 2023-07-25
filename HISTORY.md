@@ -1,5 +1,10 @@
 # Version History
 
+## v1.1.1 (unreleased)
+
+- Improved error reporting when a JSON file is empty
+  (https://github.com/scarlatti/roseingrave/issues/26)
+
 ## v1.1.0 (2023-06-13)
 
 - Added `"values"."sourcesColumnWidth"` field to template file

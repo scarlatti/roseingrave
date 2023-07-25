@@ -34,11 +34,25 @@ SETTINGS = {}
 # ======================================================================
 
 
+def _parse_json(filepath):
+    contents = filepath.read_text(encoding="utf-8").strip()
+    if contents == "":
+        raise ValueError(f"File is empty (invalid JSON): {filepath}")
+    try:
+        return json.loads(contents)
+    except ValueError as ex:
+        # attach some context to the error, then re-raise
+        ex.args = (f"JSON parse error: {ex.args[0]}", *ex.args[1:])
+        raise
+
+
+# ======================================================================
+
+
 def _read_default(file):
     """Read a default configuration from the "defaults" directory."""
     filepath = Path(Path(__file__).parent, "defaults", file)
-    contents = filepath.read_text(encoding="utf-8")
-    return json.loads(contents)
+    return _parse_json(filepath)
 
 
 # ======================================================================
@@ -96,15 +110,16 @@ def read_json(key, path=None):
             Default is None (use the settings file).
 
     Raises:
-        ValueError: If `path` is None and the key is invalid.
+        ValueError:
+            If `path` is None and the key is invalid.
+            If the file is empty.
         FileNotFoundError: If the file is not found.
 
     Returns:
         Union[Dict, List]: The contents of the JSON file.
     """
     filepath = get_path(key, path)
-    contents = filepath.read_text(encoding="utf-8")
-    return json.loads(contents)
+    return _parse_json(filepath)
 
 
 def _write(filepath, data, msg):
@@ -175,10 +190,11 @@ def _settings(msg, clear=False, must_exist=False):
         raw_values = read_json("", SETTINGS_FILE)
     except FileNotFoundError:
         if must_exist:
-            _error("No settings file found to fix")
-            return ERROR_RETURN
+            return _error("No settings file found to fix")
         # no settings file, so just use all defaults
         raw_values = {}
+    except ValueError as ex:
+        return _error(ex)
 
     # add defaults if missing
     defaults = _read_default("roseingrave.json")
