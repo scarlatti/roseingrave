@@ -4,6 +4,8 @@
 
 - Improved error reporting when a JSON file is empty
   (https://github.com/scarlatti/roseingrave/issues/26)
+- Handled edge case for incorrect type when calling `re.Pattern.match()`
+  (https://github.com/scarlatti/roseingrave/issues/28)
 
 ## v1.1.0 (2023-06-13)
 

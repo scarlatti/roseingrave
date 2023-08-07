@@ -62,7 +62,11 @@ def _parse_hyperlink(hyperlink):
             is invalid.
     """
 
-    match = HYPERLINK_RE.match(hyperlink)
+    try:
+        match = HYPERLINK_RE.match(hyperlink)
+    except TypeError:
+        # if not a string or bytes-like object, assume it's invalid
+        return None, None
     if match is None:
         return None, None
     link, text = match.groups()
